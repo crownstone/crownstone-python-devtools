@@ -16,6 +16,8 @@ setup(
     install_requires=list(package.strip() for package in open('requirements.txt')),
     scripts=[
         'tools/cs_microapp_create_header',
+        'tools/cs_bluenet_log_client',
+        'tools/cs_bluenet_extract_log_strings',
     ],
     classifiers=[
         'Programming Language :: Python :: 3.7'
