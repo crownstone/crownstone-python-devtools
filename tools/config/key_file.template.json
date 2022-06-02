@@ -1,0 +1,10 @@
+{
+  "admin":              "adminKeyForCrown",
+  "member":             "memberKeyForHome",
+  "basic":              "basicKeyForOther",
+  "serviceDataKey":     "MyServiceDataKey",
+  "localizationKey":    "aLocalizationKey",
+  "meshApplicationKey": "MyGoodMeshAppKey",
+  "meshNetworkKey":     "MyGoodMeshNetKey"
+}
+
