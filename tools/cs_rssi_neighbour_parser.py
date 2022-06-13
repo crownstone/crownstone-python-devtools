@@ -54,22 +54,34 @@ class RssiNeighbourMessage:
 class UartRssiMessageParser:
 	def __init__(self):
 		self.uartMessageSubscription = UartEventBus.subscribe(SystemTopics.uartNewMessage, self.handleUartMessage)
+		self.lastPressed = "None"
+
+		self.labels = {
+			"0": "I am not in between A and B",
+			"1": "I am in between A and B",
+
+			"2": "I am not home",
+			"3": "I am home",
+		}
 
 	def handleUartMessage(self, messagePacket: UartMessagePacket):
 		try:
 			if messagePacket.opCode == UartRxType.NEIGHBOUR_RSSI:
 				rssiMessage = RssiNeighbourMessage(messagePacket.payload)
-				print(F"{datetime.datetime.now().isoformat()}, {rssiMessage}")
+				print(F"{self.getTimeString()}, {rssiMessage}, {self.lastPressed}")
 		except CrownstoneException as e:
 			print(f"Parse error: {e}")
 
+	def press(self, key):
+		""" ssh keyboard callback """
+		self.lastPressed = F"{str(key)}, {self.labels.get(key, 'Unknown label')}"
 
-## ssh keyboard
-async def press(key):
-	print(f"'{key}' was pressed")
+		print(F"{self.getTimeString()}, keyboard event: {self.lastPressed}")
 
-async def release(key):
-	print(f"'{key}' was released")
+	def getTimeString(self):
+		return datetime.datetime.now().isoformat()
+
+
 
 
 
@@ -83,14 +95,11 @@ if __name__=="__main__":
 
 	# The try except part is just to catch a control+c to gracefully stop the UART lib.
 	try:
-		listen_keyboard(on_press=press, on_release=release, until="space")
-
-		# Simply keep the program running.
-		while True:
-			time.sleep(1)
+		listen_keyboard(on_press=lambda k: parser.press(k), until="space")
+		print("space was pressed, exiting")
 	except KeyboardInterrupt:
-		pass
+		print("\nKeyboardInterrupt received, exiting..")
 	finally:
-		print("\nStopping UART..")
+		print("stopping uart")
 		uart.stop()
-		print("Stopped")
+	print("Stopped")
