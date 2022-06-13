@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-This script receives "neighbour rssi" uart messages and logs them to the terminal.
+This script receives "neighbour rssi" uart messages and logs them to file and the terminal.
 It labels the messages with a time stamp and a short text that describes the physical state
 (a la supervised learning).
 """
@@ -21,6 +21,7 @@ from crownstone_uart.core.uart.uartPackets.UartMessagePacket import UartMessageP
 from crownstone_uart.topics.SystemTopics import SystemTopics
 
 class RssiNeighbourMessage:
+	""" parses raw uart packet into python object and adds a human readible stringificator """
 	def __init__(self, payload):
 		if len(payload) != 8:
 			print("faulty payload")
@@ -54,8 +55,13 @@ class RssiNeighbourMessage:
 class UartRssiMessageParser:
 	def __init__(self):
 		self.uartMessageSubscription = UartEventBus.subscribe(SystemTopics.uartNewMessage, self.handleUartMessage)
-		self.lastPressed = "None"
+		self.lastPressed = None
+		self.logFileName = None
 
+		self.setLogFilename()
+
+		# a bunch of predefined labels to give semantic meaning to incoming uart messages.
+		# the last call to press() determines which of these will be added to the log when receiving a uart msg.
 		self.labels = {
 			"0": "I am not in between A and B",
 			"1": "I am in between A and B",
@@ -68,21 +74,32 @@ class UartRssiMessageParser:
 		try:
 			if messagePacket.opCode == UartRxType.NEIGHBOUR_RSSI:
 				rssiMessage = RssiNeighbourMessage(messagePacket.payload)
-				print(F"{self.getTimeString()}, {rssiMessage}, {self.lastPressed}")
+				self.log(F"{self.getCurrentTimeString()}, {rssiMessage}, {self.lastPressed}")
 		except CrownstoneException as e:
-			print(f"Parse error: {e}")
+			self.log(f"Parse error: {e}")
 
 	def press(self, key):
 		""" ssh keyboard callback """
 		self.lastPressed = F"{str(key)}, {self.labels.get(key, 'Unknown label')}"
+		self.log(F"{self.getCurrentTimeString()}, keyboard event: {self.lastPressed}")
 
-		print(F"{self.getTimeString()}, keyboard event: {self.lastPressed}")
-
-	def getTimeString(self):
+	def getCurrentTimeString(self):
 		return datetime.datetime.now().isoformat()
 
+	def setLogFilename(self):
+		self.logFileName = datetime.datetime.today().strftime('NeighborRssiLog_%Y-%m-%d_%Hh%M.csv')
 
+	def getLogFilename(self):
+		if not self.logFileName:
+			self.setLogFilename()
+		return self.logFileName
 
+	def log(self, logstr, silent=False):
+		""" logs given string to the current log file. set silent to True to preven a print to std out. """
+		with open(self.getLogFilename(), "a+") as logfile:
+			print(logstr, file=logfile)
+			if not silent:
+				print(logstr)
 
 
 if __name__=="__main__":
