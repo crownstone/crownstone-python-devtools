@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 
 """
-An example that shows how to run a bluenet log client.
+This script receives "neighbour rssi" uart messages and logs them to the terminal.
+It labels the messages with a time stamp and a short text that describes the physical state
+(a la supervised learning).
 """
 import time, datetime
 from statistics import mean
+from sshkeyboard import listen_keyboard
 
 from crownstone_core.Exceptions import CrownstoneException
 from crownstone_core.util.Conversion import Conversion
@@ -61,6 +64,15 @@ class UartRssiMessageParser:
 			print(f"Parse error: {e}")
 
 
+## ssh keyboard
+async def press(key):
+	print(f"'{key}' was pressed")
+
+async def release(key):
+	print(f"'{key}' was released")
+
+
+
 if __name__=="__main__":
 	# parser object waits for events of the uart event bus.
 	parser = UartRssiMessageParser()
@@ -71,6 +83,8 @@ if __name__=="__main__":
 
 	# The try except part is just to catch a control+c to gracefully stop the UART lib.
 	try:
+		listen_keyboard(on_press=press, on_release=release, until="space")
+
 		# Simply keep the program running.
 		while True:
 			time.sleep(1)

@@ -1,3 +1,4 @@
 # See https://www.python.org/dev/peps/pep-0440/#compatible-release
 crownstone-ble~=2.1
 bleak==0.10
+sshkeyboard
