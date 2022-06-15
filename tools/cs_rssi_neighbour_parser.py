@@ -6,6 +6,10 @@ It labels the messages with a time stamp and a short text that describes the phy
 (a la supervised learning).
 """
 import time, datetime
+import platform
+import argparse
+from pathlib import Path
+
 from statistics import mean
 from sshkeyboard import listen_keyboard
 
@@ -53,10 +57,16 @@ class RssiNeighbourMessage:
 		return ", ".join([str(x) for x in [self.receiverId, self.senderId, self.rssi, self.chan, self.msgNumber]])
 
 class UartRssiMessageParser:
-	def __init__(self):
+	def __init__(self, outputDirectory):
 		self.uartMessageSubscription = UartEventBus.subscribe(SystemTopics.uartNewMessage, self.handleUartMessage)
 		self.lastPressed = None
 		self.logFileName = None
+		if outputDirectory.exists():
+			print(F"setting outputdir to: {outputDirectory}")
+			self.outputDirectory = outputDirectory
+		else:
+			print(F"outputdir not found, using . instead")
+			self.outputDirectory = Path(".")
 
 		self.setLogFilename()
 
@@ -87,7 +97,7 @@ class UartRssiMessageParser:
 		return datetime.datetime.now().isoformat()
 
 	def setLogFilename(self):
-		self.logFileName = datetime.datetime.today().strftime('NeighborRssiLog_%Y-%m-%d_%Hh%M.csv')
+		self.logFileName = self.outputDirectory / datetime.datetime.today().strftime('NeighborRssiLog_%Y-%m-%d_%Hh%M.csv')
 
 	def getLogFilename(self):
 		if not self.logFileName:
@@ -95,7 +105,7 @@ class UartRssiMessageParser:
 		return self.logFileName
 
 	def log(self, logstr, silent=False):
-		""" logs given string to the current log file. set silent to True to preven a print to std out. """
+		""" logs given string to the current log file. set silent to True to prevent a print to std out. """
 		with open(self.getLogFilename(), "a+") as logfile:
 			print(logstr, file=logfile)
 			if not silent:
@@ -103,12 +113,30 @@ class UartRssiMessageParser:
 
 
 if __name__=="__main__":
+	# simple output dir option
+	argparser = argparse.ArgumentParser()
+	argparser.add_argument("-o", "--outputDirectory", type=Path)
+	argparser.add_argument("-p", "--port", type=str)
+	pargs = argparser.parse_args()
+
 	# parser object waits for events of the uart event bus.
-	parser = UartRssiMessageParser()
+	outDir = pargs.outputDirectory or Path('.')
+	parser = UartRssiMessageParser(outputDirectory=outDir)
 
 	# Init the Crownstone UART lib.
 	uart = CrownstoneUart()
-	uart.initialize_usb_sync(port="/dev/ttyACM0")
+
+	if pargs.port:
+		portname = pargs.port
+	else:
+		portname = "/dev/ttyACM0"
+		if platform.uname().system == 'Windows':
+			import serial.tools.list_ports as port_list
+			ports = list(port_list.comports())
+			# bind to the first port...
+			portname = ports[0].name
+
+	uart.initialize_usb_sync(port=portname)
 
 	# The try except part is just to catch a control+c to gracefully stop the UART lib.
 	try:
