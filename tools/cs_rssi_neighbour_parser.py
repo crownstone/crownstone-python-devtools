@@ -57,10 +57,13 @@ class RssiNeighbourMessage:
 		return ", ".join([str(x) for x in [self.receiverId, self.senderId, self.rssi, self.chan, self.msgNumber]])
 
 class UartRssiMessageParser:
-	def __init__(self, outputDirectory):
+	def __init__(self, outputDirectory, logToFile=True):
 		self.uartMessageSubscription = UartEventBus.subscribe(SystemTopics.uartNewMessage, self.handleUartMessage)
 		self.lastPressed = None
 		self.logFileName = None
+
+		self.logToFile = logToFile
+
 		if outputDirectory.exists():
 			print(F"setting outputdir to: {outputDirectory}")
 			self.outputDirectory = outputDirectory
@@ -106,10 +109,11 @@ class UartRssiMessageParser:
 
 	def log(self, logstr, silent=False):
 		""" logs given string to the current log file. set silent to True to prevent a print to std out. """
-		with open(self.getLogFilename(), "a+") as logfile:
-			print(logstr, file=logfile)
-			if not silent:
-				print(logstr)
+		if self.logToFile:
+			with open(self.getLogFilename(), "a+") as logfile:
+				print(logstr, file=logfile)
+		if not silent:
+			print(logstr)
 
 
 if __name__=="__main__":
@@ -117,11 +121,12 @@ if __name__=="__main__":
 	argparser = argparse.ArgumentParser()
 	argparser.add_argument("-o", "--outputDirectory", type=Path)
 	argparser.add_argument("-p", "--port", type=str)
+	argparser.add_argument("-l", "--logToFile", action='store_false')
 	pargs = argparser.parse_args()
 
 	# parser object waits for events of the uart event bus.
 	outDir = pargs.outputDirectory or Path('.')
-	parser = UartRssiMessageParser(outputDirectory=outDir)
+	parser = UartRssiMessageParser(outputDirectory=outDir, logToFile=pargs.logToFile)
 
 	# Init the Crownstone UART lib.
 	uart = CrownstoneUart()
