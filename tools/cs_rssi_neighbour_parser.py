@@ -133,6 +133,7 @@ class UartRssiMessageParser:
 		"""
 		if not self.logFileName:
 			self.updateLogFilename()
+			self.log("device rebooted")
 		elif datetime.datetime.today() > self.logfileStartTime + datetime.timedelta(seconds=60*1): # 3600*12
 			self.latchLogfileFromWorkToOutputDir()
 			self.updateLogFilename()
