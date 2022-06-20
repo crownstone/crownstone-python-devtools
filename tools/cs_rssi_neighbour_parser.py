@@ -139,7 +139,7 @@ class UartRssiMessageParser:
 		"""
 		if not self.logFileName:
 			self.updateLogFilename()
-		elif datetime.datetime.today() > self.logfileStartTime + datetime.timedelta(seconds=60*1): # 3600*12
+		elif datetime.datetime.today() > self.logfileStartTime + datetime.timedelta(seconds=3600*12):
 			self.latchLogfileFromWorkToOutputDir()
 			self.updateLogFilename()
 
