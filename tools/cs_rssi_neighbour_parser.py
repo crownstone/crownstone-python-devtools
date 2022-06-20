@@ -58,7 +58,12 @@ class RssiNeighbourMessage:
 		return ", ".join([str(x) for x in [self.receiverId, self.senderId, self.rssi, self.chan, self.msgNumber]])
 
 class UartRssiMessageParser:
-	def __init__(self, outputDirectory, logToFile=True):
+	def __init__(self, outputDirectory, workingDirectory, logToFile=True):
+		"""
+		logToFile: if false, script only produces terminal output, otherwise a logfile is created.
+		workingDirectory: as long as a log file is actively written to, it will be kept here
+		outputDirectory: when a log file is complete it is copied to this dir. (happens when a new log file is created)
+		"""
 		self.uartMessageSubscription = UartEventBus.subscribe(SystemTopics.uartNewMessage, self.handleUartMessage)
 		self.lastPressed = None
 		self.logFileName = None
@@ -72,7 +77,16 @@ class UartRssiMessageParser:
 			print(F"outputdir not found, using . instead")
 			self.outputDirectory = Path(".")
 
-		self.setLogFilename()
+
+		if workingDirectory.exists():
+			print(F"setting workdir to: {workingDirectory}")
+			self.workingDirectory = workingDirectory
+		else:
+			print(F"workdir not found, using . instead")
+			self.workingDirectory = Path(".")
+
+		self.logfileStartTime = None # defined in updateLogFilename
+		self.updateLogFilename()
 
 		# a bunch of predefined labels to give semantic meaning to incoming uart messages.
 		# the last call to press() determines which of these will be added to the log when receiving a uart msg.
@@ -101,41 +115,56 @@ class UartRssiMessageParser:
 		""" extracted method for uniform formatting. change style here and all logs will be updated. """
 		return datetime.datetime.now().isoformat()
 
-	def setLogFilename(self):
+	def updateLogFilename(self):
 		""" update logfile name and accompanying start date """
 		self.logfileStartTime = datetime.datetime.today()
-		self.logFileName = self.outputDirectory / self.logfileStartTime.strftime('NeighborRssiLog_%Y-%m-%d_%Hh%M.csv')
+		self.logFileName = self.logfileStartTime.strftime('NeighborRssiLog_%Y-%m-%d_%Hh%M.csv')
 		print(F"updated logfilename to: {self.logFileName}")
+
+	def latchLogfileFromWorkToOutputDir(self):
+		""" moves current working log file from the work dir to the output dir, possibly overwriting a previous file """
+		os.replace(self.workingDirectory / self.logFileName, self.outputDirectory / self.logFileName)
 
 	def getLogFilename(self):
 		"""
-		returns the log file name that should currently be used.
-		will (re)generate the string when it isn't set yet, or date has changed.
+		returns the path and name to the active/working log file.
+		will (re)generate the string when it isn't set yet, or date has changed,
+		and latch the working file to the output dir when necessary.
 		"""
-		if not self.logFileName or datetime.datetime.today() > self.logfileStartTime + datetime.timedelta(seconds=3600*12):
-			self.setLogFilename()
+		if not self.logFileName:
+			self.updateLogFilename()
+		elif datetime.datetime.today() > self.logfileStartTime + datetime.timedelta(seconds=60*1): # 3600*12
+			self.latchLogfileFromWorkToOutputDir()
+			self.updateLogFilename()
+
 		return self.logFileName
 
 	def log(self, logstr, silent=False):
 		""" logs given string to the current log file. set silent to True to prevent a print to std out. """
 		if self.logToFile:
-			with open(self.getLogFilename(), "a+") as logfile:
+			with open(self.workingDirectory / self.getLogFilename(), "a+") as logfile:
 				print(logstr, file=logfile)
 		if not silent:
 			print(logstr)
+
+	def finish(self):
+		""" cleans up working dir by moving last log file to the output dir. """
+		self.latchLogfileFromWorkToOutputDir()
 
 
 if __name__=="__main__":
 	# simple output dir option
 	argparser = argparse.ArgumentParser()
 	argparser.add_argument("-o", "--outputDirectory", type=Path)
+	argparser.add_argument("-w", "--workingDirectory", type=Path)
 	argparser.add_argument("-p", "--port", type=str)
 	argparser.add_argument("-l", "--logToFile", action='store_false')
 	pargs = argparser.parse_args()
 
 	# parser object waits for events of the uart event bus.
 	outDir = pargs.outputDirectory or Path('.')
-	parser = UartRssiMessageParser(outputDirectory=outDir, logToFile=pargs.logToFile)
+	workDir = pargs.workingDirectory or outDir
+	parser = UartRssiMessageParser(outputDirectory=outDir, workingDirectory=workDir, logToFile=pargs.logToFile)
 
 	# Init the Crownstone UART lib.
 	uart = CrownstoneUart()
@@ -163,6 +192,8 @@ if __name__=="__main__":
 	except KeyboardInterrupt:
 		print("\nKeyboardInterrupt received, exiting..")
 	finally:
+		print("stopping parser")
+		parser.finish()
 		print("stopping uart")
 		uart.stop()
 	print("Stopped")
