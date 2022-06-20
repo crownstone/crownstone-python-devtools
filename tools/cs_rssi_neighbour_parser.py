@@ -117,9 +117,15 @@ class UartRssiMessageParser:
 
 	def updateLogFilename(self):
 		""" update logfile name and accompanying start date """
+		rebooted = not self.logFileName
+
 		self.logfileStartTime = datetime.datetime.today()
 		self.logFileName = self.logfileStartTime.strftime('NeighborRssiLog_%Y-%m-%d_%Hh%M.csv')
 		print(F"updated logfilename to: {self.logFileName}")
+
+		if rebooted:
+			self.log("device rebooted")
+
 
 	def latchLogfileFromWorkToOutputDir(self):
 		""" moves current working log file from the work dir to the output dir, possibly overwriting a previous file """
@@ -133,7 +139,6 @@ class UartRssiMessageParser:
 		"""
 		if not self.logFileName:
 			self.updateLogFilename()
-			self.log("device rebooted")
 		elif datetime.datetime.today() > self.logfileStartTime + datetime.timedelta(seconds=60*1): # 3600*12
 			self.latchLogfileFromWorkToOutputDir()
 			self.updateLogFilename()
