@@ -97,13 +97,21 @@ class UartRssiMessageParser:
 		self.log(F"{self.getCurrentTimeString()}, keyboard event: {self.lastPressed}")
 
 	def getCurrentTimeString(self):
+		""" extracted method for uniform formatting. change style here and all logs will be updated. """
 		return datetime.datetime.now().isoformat()
 
 	def setLogFilename(self):
-		self.logFileName = self.outputDirectory / datetime.datetime.today().strftime('NeighborRssiLog_%Y-%m-%d_%Hh%M.csv')
+		""" update logfile name and accompanying start date """
+		self.logfileStartTime = datetime.datetime.today()
+		self.logFileName = self.outputDirectory / self.logfileStartTime.strftime('NeighborRssiLog_%Y-%m-%d_%Hh%M.csv')
+		print(F"updated logfilename to: {self.logFileName}")
 
 	def getLogFilename(self):
-		if not self.logFileName:
+		"""
+		returns the log file name that should currently be used.
+		will (re)generate the string when it isn't set yet, or date has changed.
+		"""
+		if not self.logFileName or datetime.datetime.today() > self.logfileStartTime + datetime.timedelta(seconds=3600*12):
 			self.setLogFilename()
 		return self.logFileName
 
