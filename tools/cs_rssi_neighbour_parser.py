@@ -8,6 +8,7 @@ It labels the messages with a time stamp and a short text that describes the phy
 import time, datetime
 import platform
 import argparse
+import sys, os
 from pathlib import Path
 
 from statistics import mean
@@ -153,8 +154,12 @@ if __name__=="__main__":
 
 	# The try except part is just to catch a control+c to gracefully stop the UART lib.
 	try:
-		listen_keyboard(on_press=lambda k: parser.press(k), until="space")
-		print("space was pressed, exiting")
+		if os.isatty(sys.stdin.fileno()):
+			listen_keyboard(on_press=lambda k: parser.press(k), until="space")
+			print("space was pressed, exiting")
+		else:
+			while True:
+				time.sleep(1)
 	except KeyboardInterrupt:
 		print("\nKeyboardInterrupt received, exiting..")
 	finally:
