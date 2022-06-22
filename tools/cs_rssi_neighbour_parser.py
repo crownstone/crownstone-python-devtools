@@ -36,6 +36,8 @@ class RssiNeighbourMessage:
 		self.receiverId = int(payload[1])
 		self.senderId = int(payload[2])
 
+		self.rssis = [Conversion.uint8_to_int8(x) for x in payload[3:6]]
+
 		# average of non-zero channel values. (there should be only 1 channel non zero anyway)
 		self.rssi = mean([Conversion.uint8_to_int8(x) for x in payload[3:6] if x != 0])
 
@@ -55,7 +57,7 @@ class RssiNeighbourMessage:
 		if not self.initialized:
 			return "<< faulty payload >>"
 		# return self.hexstr
-		return ", ".join([str(x) for x in [self.receiverId, self.senderId, self.rssi, self.chan, self.msgNumber]])
+		return ", ".join([str(x) for x in [self.receiverId, self.senderId, self.rssis[0], self.rssis[1], self.rssis[2], self.msgNumber]])
 
 class UartRssiMessageParser:
 	def __init__(self, outputDirectory, workingDirectory, logToFile=True):
