@@ -1,7 +1,6 @@
 import argparse
 from pathlib import Path
-import re
-import glob
+import os
 
 class FeatureExtractor:
     def __init__(self, inputDirectory, fileNameRegex,  outputDirectory, extractedFileSuffix=None, dryRun=False):
@@ -15,7 +14,7 @@ class FeatureExtractor:
         self.fileNameRegex = fileNameRegex
         self.inputDirectory = inputDirectory or Path('.')
         self.outputDirectory = outputDirectory or self.inputDirectory
-        self.extractedFileSuffix = extractedFileSuffix
+        self.extractedFileSuffix = extractedFileSuffix or ".features"
         self.dryRun = bool(dryRun)
 
         self.inputDirectory = self.validatePath(self.inputDirectory)
@@ -29,14 +28,29 @@ class FeatureExtractor:
             raise FileNotFoundError(F"Path not found: {p}")
         return p
 
-    def extractSingleFile(self, pathToFile):
-        if self.dryRun:
-            print(pathToFile)
-
     def extractAllFiles(self):
         for p in sorted(self.inputDirectory.glob(self.fileNameRegex)):
             self.extractSingleFile(p)
 
+    def extractSingleFile(self, pathToFile):
+        if self.dryRun:
+            if not pathToFile.is_file():
+                raise ValueError(F"pathToFile is not a file: {pathToFile}")
+
+            head, tail = os.path.split(pathToFile)
+            if not tail:
+                raise ValueError(F"filename part of path is empty: {pathToFile}")
+
+            tailparts = tail.split(".") # filename and exts
+            tailparts[0] += self.extractedFileSuffix
+            extendedtail = ".".join(tailparts)
+            outputFile = Path(head, extendedtail)
+
+            print(F"extract features of: {pathToFile} into {outputFile}")
+            return
+        else:
+            print("reallly going to to it now!")
+            print(F"extract features of: {pathToFile}")
 
 if __name__=="__main__":
     # simple output dir option
@@ -45,7 +59,7 @@ if __name__=="__main__":
     argparser.add_argument("-o", "--outputDirectory", type=Path)
     argparser.add_argument("-f", "--fileNameRegex", type=str)
     argparser.add_argument("-s", "--extractedFileSuffix", type=str)
-    argparser.add_argument("-d", "--dryRun", action='store_false')
+    argparser.add_argument("-d", "--dryRun", action='store_true')
     pargs = argparser.parse_args()
 
     parser = FeatureExtractor(inputDirectory=pargs.inputDirectory,
