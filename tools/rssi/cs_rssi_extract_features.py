@@ -72,13 +72,13 @@ if __name__=="__main__":
     argparser.add_argument("-d", "--dryRun", action='store_true')
     argparser.add_argument("-s", "--sender", type=int)
     argparser.add_argument("-r", "--receiver", type=int)
+    argparser.add_argument("-v", "--verbose", default=False, action='store_true')
 
     pargs = argparser.parse_args()
+    print(pargs)
 
     # create parser objects for the pipe line, just passing all command line arguments to constructor
     ioFilter = SenderReceiverFilter(**vars(pargs))
-
-
 
     parser = FeatureExtractor(inputDirectory=pargs.inputDirectory,
                               outputDirectory=pargs.outputDirectory,
