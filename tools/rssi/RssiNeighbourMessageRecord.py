@@ -39,7 +39,16 @@ class RssiNeighbourMessageRecord:
         return msg.loadFromString(s)
 
     def __str__(self):
-        return str(self.__dict__)
+        return ",".join([str(x) for x in [self.lastSeen.isoformat(),
+                                           self.receiverId,
+                                           self.senderId,
+                                           self.rssis[0],
+                                           self.rssis[1],
+                                           self.rssis[2],
+                                           self.msgNumber,
+                                           self.labelint,
+                                           self.labelstr]])
+        # return str(self.__dict__)
 
 if __name__ == "__main__":
     s = "2022-07-02T12:16:15.685190,7,6,0,-52,0,132,0, I am not in between A and B"

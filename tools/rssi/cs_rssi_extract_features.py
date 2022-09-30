@@ -6,21 +6,27 @@ from tools.rssi.parsers.RssiNeighbourMessageAggregator import RssiNeighbourMessa
 from tools.rssi.parsers.SenderReceiverFilter import SenderReceiverFilter
 
 class FeatureExtractor:
-    def __init__(self, inputDirectory, fileNameRegex,  outputDirectory, parsers, extractedFileSuffix=None, dryRun=False):
+    # def __init__(self, fileNameRegex, inputDirectory, workDirectory, outputDirectory, parsers, extractedFileSuffix=None, dryRun=False):
+    def __init__(self, parsers, *args, **kwargs):
         """
-        inputDirectory: where to search for files.
         fileNameRegex: all files whose name matches the regex will have their features extracted.
+        inputDirectory: where to search for files.
+        workDirectory: where temporary files will be written to.
         outputDirectory: where the extracted files are placed.
         extractedFileSuffix: will be added to the root of the filename. E.g.: myFile.xyz.csv -> myFile.suffix.xyz.csv
         dryRun: if True, script only produces terminal output.
         """
-        self.fileNameRegex = fileNameRegex
-        self.inputDirectory = inputDirectory or Path('.')
-        self.outputDirectory = outputDirectory or self.inputDirectory
-        self.extractedFileSuffix = extractedFileSuffix or ".features"
-        self.dryRun = bool(dryRun)
+        print("extractor constr args:", kwargs)
+        self.fileNameRegex = kwargs.get("fileNameRegex")
+        self.inputDirectory = kwargs.get("inputDirectory", None) or Path('.')
+        self.outputDirectory = kwargs.get("outputDirectory",  None) or self.inputDirectory
+        self.workDirectory = kwargs.get("workDirectory", None) or self.outputDirectory
+        self.extractedFileSuffix = kwargs.get("suffix", ".features")
+        self.verbose = kwargs.get("verbose", False)
+        self.dryRun = bool(kwargs.get("dryRun", False))
 
         self.inputDirectory = self.validatePath(self.inputDirectory)
+        self.workDirectory = self.validatePath(self.workDirectory)
         self.outputDirectory = self.validatePath(self.outputDirectory)
         self.parsers = parsers
 
@@ -29,7 +35,8 @@ class FeatureExtractor:
             raise FileNotFoundError(F"Path not found: {p}")
         p = p.expanduser()
         if not p.exists():
-            raise FileNotFoundError(F"Path not found: {p}")
+                p.mkdir(parents=True)
+                print(F"Path not found, calling mkdir -p: {p}")
         return p
 
     def parseAllFiles(self):
@@ -37,6 +44,9 @@ class FeatureExtractor:
             self.parseSingleFile(p)
 
     def parseSingleFile(self, pathToFile):
+        """
+        Runs the `parsers` on the given path. Intermediate files are written to the `workDir`.
+        """
         if not pathToFile.is_file():
             raise ValueError(F"pathToFile is not a file: {pathToFile}")
 
@@ -44,21 +54,50 @@ class FeatureExtractor:
         if not tail:
             raise ValueError(F"filename part of path is empty: {pathToFile}")
 
+        workfilesOut = self.getWorkFilePaths(pathToFile, len(self.parsers))  # out.0, out.1, ...
+        workfilesIn = [pathToFile] + workfilesOut[:-1]                       # in,    out.0, out.1, ...
+
+        for index, (parser, inPath, outPath) in enumerate(zip(self.parsers, workfilesIn, workfilesOut)):
+            print(F"parsers[{index}].run({inPath}, {outPath})")
+            parser.run(pathToFile,outPath)
+
+        self.moveFileOut(workfilesOut[-1])
+
+    def getWorkFilePaths(self, pathToOriginalFile, count):
+        """
+        creates an array of paths for the intermediate files.
+        They will be in the working directory with an .{index} as suffix.
+        """
+        if not self.workDirectory.is_dir:
+            self.workDirectory.mkdir(parents=True)
+
+        head, tail = os.path.split(pathToOriginalFile)
+
         # adds the suffix that was set as script arg.
         tailparts = tail.split(".")  # filename and exts
         tailparts[0] += self.extractedFileSuffix
-        extendedtail = ".".join(tailparts)
-        outputFile = Path(head, extendedtail)
+        suffixedtail = ".".join(tailparts)
 
-        for parser in self.parsers:
-            if self.dryRun:
-                print(F"extract features of: {pathToFile} into {outputFile}")
-                parser.run(pathToFile,outputFile)
-                return
-            else:
-                print("reallly going to to it now!")
-                print(F"extract features of: {pathToFile} into {outputFile}")
-                parser.run(pathToFile, outputFile)
+        return [Path(self.workDirectory, suffixedtail + F".{index}") for index in range(count)]
+
+    def moveFileOut(self, pathToFile):
+        """
+        moves file to the outDir and strips off its trailing .{index}
+        """
+        head, tail = os.path.split(pathToFile)
+        tail = ".".join(tail.split(".")[:-1])
+
+        outPath = Path(self.outputDirectory,tail)
+
+        if self.verbose:
+            print(F"moveFileOut(self, {pathToFile}) -> {outPath}")
+
+        if self.dryRun:
+            return
+
+        pathToFile.rename(outPath)
+
+        # opt: remove intermediate files
 
 
 if __name__=="__main__":
@@ -80,12 +119,8 @@ if __name__=="__main__":
     # create parser objects for the pipe line, just passing all command line arguments to constructor
     ioFilter = SenderReceiverFilter(**vars(pargs))
     featureExtractor = RssiNeighbourMessageAggregator(**vars(pargs))
+    parserPipeline = FeatureExtractor(parsers=[ioFilter, featureExtractor], **vars(pargs))
 
-    parser = FeatureExtractor(inputDirectory=pargs.inputDirectory,
-                              outputDirectory=pargs.outputDirectory,
-                              fileNameRegex=pargs.fileNameRegex,
-                              extractedFileSuffix=pargs.suffix,
-                              dryRun=pargs.dryRun,
-                              parsers=[ioFilter, featureExtractor])
-    parser.parseAllFiles()
+    parserPipeline.parseAllFiles()
+
     print("done")

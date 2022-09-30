@@ -3,6 +3,7 @@ from tools.rssi.RssiNeighbourMessageRecord import RssiNeighbourMessageRecord
 class RssiNeighbourMessageAggregator:
     def __init__(self, *args, **kwargs):
         self.verbose = kwargs.get('verbose', False)
+        self.dryRun = kwargs.get('dryRun', False)
         self.messageList = []
         self.maxListSize = 50
 
@@ -13,7 +14,7 @@ class RssiNeighbourMessageAggregator:
         """
         print("RssiNeighbourMessageAggregator.run")
         with open(inPath, "r") as inFile:
-            with open(outPath, "a+") as outFile:
+            with open(outPath, "w+") as outFile:
                 for line in inFile:
                     if line[0] != "#":
                         record = RssiNeighbourMessageRecord.fromString(line)
