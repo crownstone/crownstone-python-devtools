@@ -67,7 +67,7 @@ class UartRssiMessageParser:
 		try:
 			if messagePacket.opCode == UartRxType.NEIGHBOUR_RSSI:
 				rssiMessage = RssiNeighbourMessage(messagePacket.payload)
-				self.log(F"{self.getCurrentTimeString()}, {rssiMessage}, {self.lastPressed}")
+				self.log(F"{self.getCurrentTimeString()},{rssiMessage},{self.lastPressed}")
 		except CrownstoneException as e:
 			self.log(f"Parse error: {e}")
 
