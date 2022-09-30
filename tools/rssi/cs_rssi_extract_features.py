@@ -1,6 +1,9 @@
 import argparse
+import datetime
 from pathlib import Path
 import os
+from tools.rssi.RssiNeighbourMessageRecord import RssiNeighbourMessageRecord
+from tools.rssi.RssiNeighbourMessageAggregator import RssiNeighbourMessageAggregator
 
 class FeatureExtractor:
     def __init__(self, inputDirectory, fileNameRegex,  outputDirectory, extractedFileSuffix=None, dryRun=False):
@@ -20,6 +23,8 @@ class FeatureExtractor:
         self.inputDirectory = self.validatePath(self.inputDirectory)
         self.outputDirectory = self.validatePath(self.outputDirectory)
 
+        self.aggregator = RssiNeighbourMessageAggregator()
+
     def validatePath(self, p):
         if not p:
             raise FileNotFoundError(F"Path not found: {p}")
@@ -28,29 +33,40 @@ class FeatureExtractor:
             raise FileNotFoundError(F"Path not found: {p}")
         return p
 
-    def extractAllFiles(self):
+    def parseAllFiles(self):
         for p in sorted(self.inputDirectory.glob(self.fileNameRegex)):
-            self.extractSingleFile(p)
+            self.parseSingleFile(p)
 
-    def extractSingleFile(self, pathToFile):
+    def parseSingleFile(self, pathToFile):
+        if not pathToFile.is_file():
+            raise ValueError(F"pathToFile is not a file: {pathToFile}")
+
+        head, tail = os.path.split(pathToFile)
+        if not tail:
+            raise ValueError(F"filename part of path is empty: {pathToFile}")
+
+        tailparts = tail.split(".")  # filename and exts
+        tailparts[0] += self.extractedFileSuffix
+        extendedtail = ".".join(tailparts)
+        outputFile = Path(head, extendedtail)
+
         if self.dryRun:
-            if not pathToFile.is_file():
-                raise ValueError(F"pathToFile is not a file: {pathToFile}")
-
-            head, tail = os.path.split(pathToFile)
-            if not tail:
-                raise ValueError(F"filename part of path is empty: {pathToFile}")
-
-            tailparts = tail.split(".") # filename and exts
-            tailparts[0] += self.extractedFileSuffix
-            extendedtail = ".".join(tailparts)
-            outputFile = Path(head, extendedtail)
-
             print(F"extract features of: {pathToFile} into {outputFile}")
+            self.parse(pathToFile,outputFile)
             return
         else:
             print("reallly going to to it now!")
-            print(F"extract features of: {pathToFile}")
+            print(F"extract features of: {pathToFile} into {outputFile}")
+            self.parse(pathToFile, outputFile)
+
+    def parse(self, inPath, outPath):
+        with open(inPath, "r") as inFile:
+            with open(outPath,"a+") as outFile:
+                for line in inFile:
+                    if line[0] != "#":
+                        contentobj = RssiNeighbourMessageRecord.fromString(line)
+                        print(contentobj)
+
 
 if __name__=="__main__":
     # simple output dir option
@@ -68,5 +84,5 @@ if __name__=="__main__":
                               extractedFileSuffix=pargs.extractedFileSuffix,
                               dryRun=pargs.dryRun)
 
-    parser.extractAllFiles()
+    parser.parseAllFiles()
     print("done")

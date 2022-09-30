@@ -3,10 +3,32 @@ from statistics import mean
 
 class RssiNeighbourMessage:
 	""" parses raw uart packet into python object and adds a human readible stringificator """
-	def __init__(self, payload):
+	def __init__(self, payload=None):
+		self.receiverId = None
+		self.senderId = None
+
+		self.rssis = [None]*3
+		self.rssi = None
+		self.chan = None
+
+		# one of these will be set.
+		self.lastSeenSecondsAgo = None
+		self.lastSeen = None
+
+		self.msgNumber = None
+		self.hexstr = ""
+		self.labelstr = ""
+		self.labelint = None
+
+		self.initialized = False
+
+		if payload is None:
+			return
+
+		self.loadFromBytes(payload)
+
+	def loadFromBytes(self, payload):
 		if len(payload) != 8:
-			print("faulty payload")
-			self.initialized = False
 			return
 
 		self.receiverId = int(payload[1])
@@ -31,6 +53,8 @@ class RssiNeighbourMessage:
 
 	def __str__(self):
 		if not self.initialized:
-			return "<< faulty payload >>"
+			return "# faulty payload!"
 		# return self.hexstr
 		return ", ".join([str(x) for x in [self.receiverId, self.senderId, self.rssis[0], self.rssis[1], self.rssis[2], self.msgNumber]])
+
+
