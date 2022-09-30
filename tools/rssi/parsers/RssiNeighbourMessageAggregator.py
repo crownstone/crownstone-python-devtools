@@ -1,8 +1,34 @@
+from tools.rssi.RssiNeighbourMessageRecord import RssiNeighbourMessageRecord
 
 class RssiNeighbourMessageAggregator:
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        self.verbose = kwargs.get('verbose', False)
         self.messageList = []
         self.maxListSize = 50
+
+    def run(self, inPath, outPath):
+        """
+        loads lines in inPath, extract/aggregate features and send to outPath.
+        Comments are forwarded too.
+        """
+        print("RssiNeighbourMessageAggregator.run")
+        with open(inPath, "r") as inFile:
+            with open(outPath, "a+") as outFile:
+                for line in inFile:
+                    if line[0] != "#":
+                        record = RssiNeighbourMessageRecord.fromString(line)
+                        self.update(record)
+                        print(self.getOutputLine(), file=outFile)
+                        if self.verbose:
+                            print(self.getOutputLine())
+                    else:
+                        # comments go straight into the next file
+                        print(line, file=outFile)
+                        if self.verbose:
+                            print(line)
+
+    def getOutputLine(self):
+        return F"cached messages: {len(self.messageList)}"
 
     def update(self, rssiNeighbourMessageRecord):
         """

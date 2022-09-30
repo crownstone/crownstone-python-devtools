@@ -75,16 +75,17 @@ if __name__=="__main__":
     argparser.add_argument("-v", "--verbose", default=False, action='store_true')
 
     pargs = argparser.parse_args()
-    print(pargs)
+    print("script args: ", pargs)
 
     # create parser objects for the pipe line, just passing all command line arguments to constructor
     ioFilter = SenderReceiverFilter(**vars(pargs))
+    featureExtractor = RssiNeighbourMessageAggregator(**vars(pargs))
 
     parser = FeatureExtractor(inputDirectory=pargs.inputDirectory,
                               outputDirectory=pargs.outputDirectory,
                               fileNameRegex=pargs.fileNameRegex,
                               extractedFileSuffix=pargs.suffix,
                               dryRun=pargs.dryRun,
-                              parsers=[ioFilter])
+                              parsers=[ioFilter, featureExtractor])
     parser.parseAllFiles()
     print("done")
