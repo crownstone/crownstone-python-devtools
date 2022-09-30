@@ -16,7 +16,6 @@ class FeatureExtractor:
         extractedFileSuffix: will be added to the root of the filename. E.g.: myFile.xyz.csv -> myFile.suffix.xyz.csv
         dryRun: if True, script only produces terminal output.
         """
-        print("extractor constr args:", kwargs)
         self.fileNameRegex = kwargs.get("fileNameRegex")
         self.inputDirectory = kwargs.get("inputDirectory", None) or Path('.')
         self.outputDirectory = kwargs.get("outputDirectory",  None) or self.inputDirectory
@@ -59,7 +58,10 @@ class FeatureExtractor:
 
         for index, (parser, inPath, outPath) in enumerate(zip(self.parsers, workfilesIn, workfilesOut)):
             print(F"parsers[{index}].run({inPath}, {outPath})")
-            parser.run(pathToFile,outPath)
+
+            with open(inPath, "r") as inFile:
+                with open(outPath, "w+") as outFile:
+                    parser.run(inFile,outFile)
 
         self.moveFileOut(workfilesOut[-1])
 
