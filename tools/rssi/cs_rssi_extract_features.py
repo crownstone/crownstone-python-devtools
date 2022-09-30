@@ -1,12 +1,12 @@
 import argparse
-import datetime
 from pathlib import Path
 import os
-from tools.rssi.RssiNeighbourMessageRecord import RssiNeighbourMessageRecord
-from tools.rssi.RssiNeighbourMessageAggregator import RssiNeighbourMessageAggregator
+
+from tools.rssi.parsers.RssiNeighbourMessageAggregator import RssiNeighbourMessageAggregator
+from tools.rssi.parsers.SenderReceiverFilter import SenderReceiverFilter
 
 class FeatureExtractor:
-    def __init__(self, inputDirectory, fileNameRegex,  outputDirectory, extractedFileSuffix=None, dryRun=False):
+    def __init__(self, inputDirectory, fileNameRegex,  outputDirectory, parsers, extractedFileSuffix=None, dryRun=False):
         """
         inputDirectory: where to search for files.
         fileNameRegex: all files whose name matches the regex will have their features extracted.
@@ -22,8 +22,7 @@ class FeatureExtractor:
 
         self.inputDirectory = self.validatePath(self.inputDirectory)
         self.outputDirectory = self.validatePath(self.outputDirectory)
-
-        self.aggregator = RssiNeighbourMessageAggregator()
+        self.parsers = parsers
 
     def validatePath(self, p):
         if not p:
@@ -45,44 +44,47 @@ class FeatureExtractor:
         if not tail:
             raise ValueError(F"filename part of path is empty: {pathToFile}")
 
+        # adds the suffix that was set as script arg.
         tailparts = tail.split(".")  # filename and exts
         tailparts[0] += self.extractedFileSuffix
         extendedtail = ".".join(tailparts)
         outputFile = Path(head, extendedtail)
 
-        if self.dryRun:
-            print(F"extract features of: {pathToFile} into {outputFile}")
-            self.parse(pathToFile,outputFile)
-            return
-        else:
-            print("reallly going to to it now!")
-            print(F"extract features of: {pathToFile} into {outputFile}")
-            self.parse(pathToFile, outputFile)
-
-    def parse(self, inPath, outPath):
-        with open(inPath, "r") as inFile:
-            with open(outPath,"a+") as outFile:
-                for line in inFile:
-                    if line[0] != "#":
-                        contentobj = RssiNeighbourMessageRecord.fromString(line)
-                        print(contentobj)
+        for parser in self.parsers:
+            if self.dryRun:
+                print(F"extract features of: {pathToFile} into {outputFile}")
+                parser.run(pathToFile,outputFile)
+                return
+            else:
+                print("reallly going to to it now!")
+                print(F"extract features of: {pathToFile} into {outputFile}")
+                parser.run(pathToFile, outputFile)
 
 
 if __name__=="__main__":
     # simple output dir option
     argparser = argparse.ArgumentParser()
     argparser.add_argument("-i", "--inputDirectory", type=Path)
+    argparser.add_argument("-w", "--workDirectory", type=Path)
     argparser.add_argument("-o", "--outputDirectory", type=Path)
     argparser.add_argument("-f", "--fileNameRegex", type=str)
-    argparser.add_argument("-s", "--extractedFileSuffix", type=str)
+    argparser.add_argument("--suffix", type=str)
     argparser.add_argument("-d", "--dryRun", action='store_true')
+    argparser.add_argument("-s", "--sender", type=int)
+    argparser.add_argument("-r", "--receiver", type=int)
+
     pargs = argparser.parse_args()
+
+    # create parser objects for the pipe line, just passing all command line arguments to constructor
+    ioFilter = SenderReceiverFilter(**vars(pargs))
+
+
 
     parser = FeatureExtractor(inputDirectory=pargs.inputDirectory,
                               outputDirectory=pargs.outputDirectory,
                               fileNameRegex=pargs.fileNameRegex,
-                              extractedFileSuffix=pargs.extractedFileSuffix,
-                              dryRun=pargs.dryRun)
-
+                              extractedFileSuffix=pargs.suffix,
+                              dryRun=pargs.dryRun,
+                              parsers=[ioFilter])
     parser.parseAllFiles()
     print("done")
