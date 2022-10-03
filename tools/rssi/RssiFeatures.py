@@ -1,3 +1,5 @@
+from itertools import chain
+
 from tools.rssi.RssiNeighbourMessageRecord import RssiNeighbourMessageRecord
 from statistics import mean, stdev, median_grouped, variance, StatisticsError
 
@@ -15,8 +17,8 @@ class RssiChannelFeatures:
             raise ValueError("channel id must be 0,1 or 2")
 
         self.channel = channel
-        self.records = self.validRecords(records)
-        print(F"Constructing features for channel {self.channel} using {len(self.records)}/{len(records)} samples")
+        validRecords = self.validRecords(records)
+        print(F"Constructing features for channel {self.channel} using {len(validRecords)}/{len(records)} samples")
 
         self.recordCount = len(records)
 
@@ -24,17 +26,17 @@ class RssiChannelFeatures:
         toRssi = lambda record: record.rssis[self.channel]
 
         try:
-            self.mean = mean(map(toRssi, self.records))
+            self.mean = mean(map(toRssi, validRecords))
         except StatisticsError:
             self.mean = ""
 
         try:
-            self.stdev = stdev(map(toRssi, self.records))
+            self.stdev = stdev(map(toRssi, validRecords))
         except StatisticsError:
             self.stdev = ""
 
         try:
-            self.median_grouped = median_grouped(map(toRssi, self.records))
+            self.median_grouped = median_grouped(map(toRssi, validRecords))
         except StatisticsError:
             self.median_grouped = ""
 
@@ -45,7 +47,8 @@ class RssiChannelFeatures:
     def messagesDropCount(self, msgList):
         pass
 
-    def columnNames(self):
+    @staticmethod
+    def columnNames():
         """
         Returns a list of member variables that determine how this object will be stringified.
         Elements must exactly match member variable names
@@ -72,12 +75,38 @@ class RssiFeatures:
         self.channelFeatures = [RssiChannelFeatures(i, rssiRecords) for i in range(3)]
 
     def __str__(self):
-        return ",".join([F"{{{feature}}}" for feature in self.channelFeatures])
+        return ",".join([F"{feature}" for feature in self.channelFeatures])
+
+    @staticmethod
+    def columnNames():
+        columnNamesWithChannelSuffix = [
+            [columnName + "_" + str(channel)
+                for columnName in RssiChannelFeatures.columnNames()]
+                    for channel in range(3)]
+        return list(chain(*columnNamesWithChannelSuffix))
+
+
+class RssiPrefilteredFeatures:
+    """
+    named object that pre-filters rssi messages. Can be used multiple times by calling load()
+    """
+    def __init__(self, name, preFilter):
+        self.name = name
+        self.preFilter = preFilter
+        self.features = None
 
     def columnNames(self):
-        columnNamesWithChannelSuffix = [
-            [columnName + "_" + str(channFeat.channel)
-                for columnName in channFeat.columnNames()]
-                    for channFeat in self.channelFeatures]
-        return columnNamesWithChannelSuffix
+        columnNamesWithChannelPrefix = [
+            self.name + "_" + columnName
+                for columnName in RssiFeatures.columnNames()]
+        return columnNamesWithChannelPrefix
 
+    def load(self, rssiRecords):
+        prefilteredMsgs = self.preFilter(rssiRecords)  # apply filter
+        self.features = RssiFeatures(prefilteredMsgs)
+
+    def __str__(self):
+        return str(self.features)
+
+    def valuesCsv(self):
+        return str(self.features)
