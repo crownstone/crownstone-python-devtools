@@ -5,7 +5,7 @@ class RssiNeighbourMessageRecord:
     a class that encapsulates the records that are logged by the parser (*-raw.csv).
     """
     def __init__(self):
-        self.lastSeen = None
+        self.timestamp = None
 
         self.receiverId = None
         self.senderId = None
@@ -21,7 +21,7 @@ class RssiNeighbourMessageRecord:
     def loadFromString(self, s):
         vals = s.split(",")
         i = iter(range(10))
-        self.lastSeen = datetime.fromisoformat(vals[next(i)])
+        self.timestamp = datetime.fromisoformat(vals[next(i)])
         self.receiverId = int(vals[next(i)])
         self.senderId = int(vals[next(i)])
         self.rssis[0] = int(vals[next(i)])
@@ -39,7 +39,7 @@ class RssiNeighbourMessageRecord:
         return msg.loadFromString(s)
 
     def __str__(self):
-        return ",".join([str(x) for x in [self.lastSeen.isoformat(),
+        return ",".join([str(x) for x in [self.timestamp.isoformat(),
                                            self.receiverId,
                                            self.senderId,
                                            self.rssis[0],
