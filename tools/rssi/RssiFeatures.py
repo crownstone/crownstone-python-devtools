@@ -18,9 +18,9 @@ class RssiChannelFeatures:
 
         self.channel = channel
         validRecords = self.validRecords(records)
-        print(F"Constructing features for channel {self.channel} using {len(validRecords)}/{len(records)} samples")
-
         self.recordCount = len(records)
+        self.validRecordCount = len(validRecords)
+        # print(F"Constructing features for channel {self.channel} using {len(validRecords)}/{len(records)} samples")
 
         # selects the rssi value of the relevant channel
         toRssi = lambda record: record.rssis[self.channel]
@@ -54,7 +54,7 @@ class RssiChannelFeatures:
         Elements must exactly match member variable names
         """
         # return ["channel", "recordCount", "mean", "stdev"]
-        return ["mean", "stdev"]
+        return ["mean", "stdev", "median_grouped"]
 
     def __str__(self):
         """
@@ -71,7 +71,7 @@ class RssiFeatures:
         """
         rssiRecords: a list of RssiNeighbourMessageRecord from which the features will be extracted.
         """
-        print(F"Constructing RssiFeatures from {len(rssiRecords)} messages")
+        # print(F"Constructing RssiFeatures from {len(rssiRecords)} messages")
         self.channelFeatures = [RssiChannelFeatures(i, rssiRecords) for i in range(3)]
 
     def __str__(self):

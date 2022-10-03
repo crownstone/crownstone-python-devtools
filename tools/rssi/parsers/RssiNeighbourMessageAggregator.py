@@ -11,7 +11,7 @@ class RssiNeighbourMessageAggregator:
         self.verbose = kwargs.get('verbose', False)
         self.dryRun = kwargs.get('dryRun', False)
         self.messageList = []
-        self.maxListSize = 5
+        self.maxListSize = 50
 
     def run(self, inFile, outFile):
         """
@@ -43,7 +43,7 @@ class RssiNeighbourMessageAggregator:
                     values.append(currentValue)
 
                     if self.verbose:
-                        print(currentValue)
+                        print(F"{extractor.name}: {currentValue}")
 
                 print(",".join(values), file = outFile)
             else:
@@ -63,22 +63,13 @@ class RssiNeighbourMessageAggregator:
             self.messageList = self.messageList[overflow:]
 
     def getFeatureExtractors(self):
-        # tail_5 = self.tailByCount(5)
-        # tail_10 = self.tailByCount(10)
-        # tail_50 = self.tailByCount(50)
-        #
-        # history_10s = self.tailByTime(10)
-        # history_30s = self.tailByTime(30)
-        # history_60s = self.tailByTime(60)
-        # history_5m = self.tailByTime(60*5)
-        #
-        # [
-        # self.getOutputLine(self.tailByCount(5))
-        #     getOutputLine(self.tailByCount(10))
-        # ]
         extractors = [
-            RssiPrefilteredFeatures("tail5", self.tailByCount(5)),
-            RssiPrefilteredFeatures("tail5", self.tailByCount(10))
+            RssiPrefilteredFeatures("last-5-records", self.tailByCount(5)),
+            RssiPrefilteredFeatures("last-10-records", self.tailByCount(10)),
+            RssiPrefilteredFeatures("last-50-records", self.tailByCount(50)),
+            RssiPrefilteredFeatures("last-10-seconds", self.tailByTime(10)),
+            RssiPrefilteredFeatures("last-30-seconds", self.tailByTime(30)),
+            RssiPrefilteredFeatures("last-5-minutes", self.tailByTime(60*5)),
         ]
         return extractors
 
