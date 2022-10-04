@@ -1,91 +1,106 @@
 from tools.rssi.RssiNeighbourMessageRecord import RssiNeighbourMessageRecord
-from tools.rssi.RssiFeatures import RssiFeatures, RssiChannelFeatures, RssiPrefilteredFeatures
-
-from datetime import timedelta
-from itertools import chain
-from statistics import mean, stdev, median_grouped, variance, StatisticsError
-from functools import reduce
+from tools.rssi.RssiFeatures import RssiChannelFeatures, RssiRecordFilterByTime, RssiRecordFilterByCount, RssiRecordFilterByChannelNonZero
 
 class RssiNeighbourMessageAggregator:
+    """
+    Parses a csv file consisting of `RssiNeighbourMessageRecord`s using several filters to generate
+    basic statistics.
+    """
     def __init__(self, *args, **kwargs):
         self.verbose = kwargs.get('verbose', False)
         self.dryRun = kwargs.get('dryRun', False)
         self.messageList = []
         self.maxListSize = 50
 
+        self.tailFilters = [
+            RssiRecordFilterByCount("last-5-records", 5),
+            RssiRecordFilterByCount("last-10-records", 10),
+            RssiRecordFilterByCount("last-50-records", 50),
+            RssiRecordFilterByTime("last-10-seconds", 10),
+            RssiRecordFilterByTime("last-30-seconds", 30),
+            RssiRecordFilterByTime("last-5-minutes", 60*5),
+        ]
+
+        channels = list(range(3)) + [None]
+        names = [F"channel-{i}" if i else "all-channels" for i in channels]
+        self.channelFilters = [
+            RssiRecordFilterByChannelNonZero(name, chan)
+                for chan,name in zip(channels,names)]
+
     def run(self, inFile, outFile):
         """
         loads lines in inFile, extract/aggregate features and print to outFile.
+        Applies all the combinations of filters.
         Comments are forwarded too.
         """
-        featureExtractors = self.getFeatureExtractors()
+        if self.verbose:
+            print("running RssiNeighbourMessageAggregator")
 
-        print("running RssiNeighbourMessageAggregator")
         printColumnHeader = True
         for line in inFile:
+            outputline = None
+
             if printColumnHeader:
-                extractorHeaders = [extractor.columnNames() for extractor in featureExtractors]
-                header = ", ".join(list(chain(*extractorHeaders)))
-                print(header, file=outFile)
-                if self.verbose:
-                    print(header)
+                columnNames = []
+                for channelfilter in self.channelFilters:
+                    for tailfilter in self.tailFilters:
+                        for statisticname in RssiChannelFeatures.columnNames():
+                            columnNames.append(F"{channelfilter.name}_{tailfilter.name}_{statisticname}")
+                header = ", ".join(columnNames)
+
+                self.output(F"# {header}", outFile)
                 printColumnHeader = False
 
-            if line[0] != "#":
-                record = RssiNeighbourMessageRecord.fromString(line)
-                self.update(record)
-                print(F"cached messages: {len(self.messageList)}, newest entry: {self.messageList[-1]}")
-
-                values = []
-                for extractor in featureExtractors:
-                    extractor.load(self.messageList)
-                    currentValue = extractor.valuesCsv()
-                    values.append(currentValue)
-
-                    if self.verbose:
-                        print(F"{extractor.name}: {currentValue}")
-
-                print(",".join(values), file = outFile)
-            else:
+            if line[0] == "#":
                 # comments go straight into the next file
-                print(line, file=outFile)
-                if self.verbose:
-                    print(line)
+                outputline = line
+            else:
+                try:
+                    record = RssiNeighbourMessageRecord.fromString(line)
+                    self.update(record)
+                    if self.verbose:
+                        print(F"cached messages: {len(self.messageList)}, newest entry: {self.messageList[-1]}")
 
+                    # create csv line
+                    values = []
+                    for channelfilter in self.channelFilters:
+                        for tailfilter in self.tailFilters:
+                            filteredRecords = self.messageList
+                            filteredRecords = channelfilter.run(filteredRecords)
+                            filteredRecords = tailfilter.run(filteredRecords)
+
+                            stats = RssiChannelFeatures(channelfilter.channel)
+                            stats.load(filteredRecords)
+                            statsvalues = stats.values()
+                            values += statsvalues
+                            if self.verbose:
+                                print(F"stats: {channelfilter.name}-{tailfilter.name}:",statsvalues, str(stats))
+                    outputline = ",".join([str(val) for val in values])
+
+                except ValueError:
+                    if self.verbose:
+                        errormessage = "Failed to construct RssiNeighbourMessageRecord"
+                        print(F"{line} # Error: {errormessage}")
+                    outputline = None
+
+            self.output(outputline, outFile)
+
+    def output(self, outputline, outFile):
+        if outputline is not None:
+            if not self.dryRun:
+                print(outputline, file=outFile)
+            if self.verbose:
+                print(F"output: {outputline}")
 
     def update(self, rssiNeighbourMessageRecord):
         """
-        Add record to the list, removing oldest entry if necessary.
+        Add record to the end the list, removing oldest entry if max capacity is reached.
         """
         self.messageList.append(rssiNeighbourMessageRecord)
         overflow = len(self.messageList) - self.maxListSize
         if overflow >= 0:
             self.messageList = self.messageList[overflow:]
 
-    def getFeatureExtractors(self):
-        extractors = [
-            RssiPrefilteredFeatures("last-5-records", self.tailByCount(5)),
-            RssiPrefilteredFeatures("last-10-records", self.tailByCount(10)),
-            RssiPrefilteredFeatures("last-50-records", self.tailByCount(50)),
-            RssiPrefilteredFeatures("last-10-seconds", self.tailByTime(10)),
-            RssiPrefilteredFeatures("last-30-seconds", self.tailByTime(30)),
-            RssiPrefilteredFeatures("last-5-minutes", self.tailByTime(60*5)),
-        ]
-        return extractors
 
-    # filters
-    def tailByCount(self, count):
-        def filter(inputlist, count):
-            return inputlist[-count:]
-        return lambda msgs: filter(msgs,count)
 
-    def tailByTime(self, seconds):
-        def filter(inputlist, seconds):
-            threshold = inputlist[-1].timestamp - timedelta(seconds=seconds)
-            return [msg for msg in inputlist if msg.timestamp > threshold]
-        return lambda msgs: filter(msgs,seconds)
-
-    # transforms
-    def logistic(self, msgList):
-        pass
 

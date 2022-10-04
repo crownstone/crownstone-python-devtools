@@ -116,7 +116,7 @@ if __name__=="__main__":
     argparser.add_argument("-v", "--verbose", default=False, action='store_true')
 
     pargs = argparser.parse_args()
-    print("script args: ", pargs)
+    print(F"{__file__} called as with args: {pargs}")
 
     # create parser objects for the pipe line, just passing all command line arguments to constructor
     ioFilter = SenderReceiverFilter(**vars(pargs))

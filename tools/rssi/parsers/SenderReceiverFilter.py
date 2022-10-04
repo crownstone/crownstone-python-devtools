@@ -20,22 +20,31 @@ class SenderReceiverFilter:
         """
         print("running SenderReceiverFilter")
         for line in inFile:
-            if line[0] != "#":
-                record = RssiNeighbourMessageRecord.fromString(line)
-                if (self.sender is not None and self.sender != record.senderId) or \
-                        (self.receiver is not None and self.receiver != record.receiverId):
-                    # skip record
-                    continue
-                else:
-                    # accept record
-                    recordstr = str(record)
-                    if not self.dryRun:
-                        print(recordstr, file=outFile)
-                    if self.verbose:
-                        print(recordstr)
+            outputline = None
+
+            if line[0] == "#":
+                outputline = line
             else:
-                # copy comments
-                if not self.dryRun:
-                    print(line, file=outFile)
-                if self.verbose:
-                    print(line)
+                try:
+                    record = RssiNeighbourMessageRecord.fromString(line)
+                    if (self.sender is not None and self.sender != record.senderId) or \
+                            (self.receiver is not None and self.receiver != record.receiverId):
+                        # skip record, ids don't match
+                        outputline = None
+                    else:
+                        # accept record
+                        outputline = str(record)
+                except ValueError:
+                    if self.verbose:
+                        errormessage = "Failed to construct RssiNeighbourMessageRecord"
+                        print(F"{line} # Error: {errormessage}")
+                    outputline = None
+
+            self.output(outputline,outFile)
+
+    def output(self, outputline, outFile):
+        if outputline is not None:
+            if not self.dryRun:
+                print(outputline, file=outFile)
+            if self.verbose:
+                print(outputline)

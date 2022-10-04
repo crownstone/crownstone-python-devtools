@@ -1,48 +1,56 @@
 from itertools import chain
-
+from datetime import timedelta
 from tools.rssi.RssiNeighbourMessageRecord import RssiNeighbourMessageRecord
 from statistics import mean, stdev, median_grouped, variance, StatisticsError
 
 
 class RssiChannelFeatures:
     """
-    Consists of features depending only on a single channel.
+    Object that computes statistics over a list of RssiNeighbourMessageRecord objects.
     Features that cannot be computed/constructed are set to "".
 
-    `channel`: 0 based channel id.
+    `channel`: 0 based channel id. or None for 'all non-zero values'.
     `records`: list of RssiNeighbourMessageRecord instances.
     """
-    def __init__(self, channel, records):
-        if channel not in range(3):
-            raise ValueError("channel id must be 0,1 or 2")
+    def __init__(self, channel):
+        if channel not in range(3) and channel is not None:
+            raise ValueError(F"channel id must be 0,1 or 2, got {channel}")
 
         self.channel = channel
-        validRecords = self.validRecords(records)
+
+        self.recordCount = None
+        self.validRecordCount = None
+        self.mean = None
+        self.stdev = None
+        self.median_grouped = None
+
+    def load(self, records):
         self.recordCount = len(records)
-        self.validRecordCount = len(validRecords)
-        # print(F"Constructing features for channel {self.channel} using {len(validRecords)}/{len(records)} samples")
+        rssis = [self.toRssi(rec) for rec in records]
 
-        # selects the rssi value of the relevant channel
-        toRssi = lambda record: record.rssis[self.channel]
-
-        try:
-            self.mean = mean(map(toRssi, validRecords))
-        except StatisticsError:
+        if len(rssis) < 2:
+            print("too few arguments to compute statistics")
             self.mean = ""
-
-        try:
-            self.stdev = stdev(map(toRssi, validRecords))
-        except StatisticsError:
             self.stdev = ""
-
-        try:
-            self.median_grouped = median_grouped(map(toRssi, validRecords))
-        except StatisticsError:
             self.median_grouped = ""
+        else:
+            self.mean = mean(rssis)
+            self.stdev = stdev(rssis)
+            self.median_grouped = median_grouped(rssis)
 
+        if any([val == 0 for val in [self.mean, self.stdev, self.median_grouped]]):
+            print("zero value")
 
-    def validRecords(self, records):
-        return [rec for rec in records if rec.rssis[self.channel] != 0]
+    def toRssi(self, record):
+        """
+        Selects the rssi value of the relevant channel or the average if channel is None.
+        """
+        if self.channel is not None:
+            return record.rssis[self.channel]
+        nonzeroes = [rssi for rssi in record.rssis if rssi != 0]
+        if nonzeroes:
+            return mean(nonzeroes)
+        return None
 
     def messagesDropCount(self, msgList):
         pass
@@ -51,62 +59,72 @@ class RssiChannelFeatures:
     def columnNames():
         """
         Returns a list of member variables that determine how this object will be stringified.
-        Elements must exactly match member variable names
+        Elements must exactly match member variable names.
         """
         # return ["channel", "recordCount", "mean", "stdev"]
         return ["mean", "stdev", "median_grouped"]
+
+    def values(self):
+        """
+        Returns a list with values for the columns
+        """
+        return [getattr(self, columnname) for columnname in self.columnNames()]
 
     def __str__(self):
         """
         creates a comma separated string based on the column names by looking up
         the values of the member variables with that exact name.
         """
-        return ",".join([str(getattr(self, columnname)) for columnname in self.columnNames()])
+        return ",".join([str(val) for val in self.values()])
 
-class RssiFeatures:
+class RssiRecordFilterByTime:
     """
-    Extracted features of a rssi message recording.
+    named object that pre-filters rssi messages. Can be used multiple times by calling run()
     """
-    def __init__(self, rssiRecords):
-        """
-        rssiRecords: a list of RssiNeighbourMessageRecord from which the features will be extracted.
-        """
-        # print(F"Constructing RssiFeatures from {len(rssiRecords)} messages")
-        self.channelFeatures = [RssiChannelFeatures(i, rssiRecords) for i in range(3)]
-
-    def __str__(self):
-        return ",".join([F"{feature}" for feature in self.channelFeatures])
-
-    @staticmethod
-    def columnNames():
-        columnNamesWithChannelSuffix = [
-            [columnName + "_" + str(channel)
-                for columnName in RssiChannelFeatures.columnNames()]
-                    for channel in range(3)]
-        return list(chain(*columnNamesWithChannelSuffix))
-
-
-class RssiPrefilteredFeatures:
-    """
-    named object that pre-filters rssi messages. Can be used multiple times by calling load()
-    """
-    def __init__(self, name, preFilter):
+    def __init__(self, name, seconds):
         self.name = name
-        self.preFilter = preFilter
-        self.features = None
+        self.seconds = seconds
 
-    def columnNames(self):
-        columnNamesWithChannelPrefix = [
-            self.name + "_" + columnName
-                for columnName in RssiFeatures.columnNames()]
-        return columnNamesWithChannelPrefix
+    def run(self, records):
+        if not records:
+            return []
 
-    def load(self, rssiRecords):
-        prefilteredMsgs = self.preFilter(rssiRecords)  # apply filter
-        self.features = RssiFeatures(prefilteredMsgs)
+        threshold = records[-1].timestamp - timedelta(seconds=self.seconds)
+        retval =  [msg for msg in records if msg.timestamp > threshold]
 
-    def __str__(self):
-        return str(self.features)
+        if len(retval) < 2:
+            if len(records) >= 2:
+                delta = records[-1].timestamp - records[-2].timestamp
+                print("Filtered too much! Time between last updates was:", delta)
 
-    def valuesCsv(self):
-        return str(self.features)
+        return retval
+
+class RssiRecordFilterByCount:
+    """
+    named object that pre-filters rssi messages. Can be used multiple times by calling run()
+    """
+    def __init__(self, name, count):
+        self.name = name
+        self.count = count
+
+    def run(self, records):
+        if len(records) < self.count:
+            return records
+        return records[-self.count:]
+
+class RssiRecordFilterByChannelNonZero:
+    """
+    named object that pre-filters rssi messages. Can be used multiple times by calling run()
+    """
+    def __init__(self, name, channel):
+        self.name = name
+        self.channel = channel
+
+    def run(self, records):
+        if self.channel is not None:
+            return [rec for rec in records if rec.rssis[self.channel] != 0]
+        else:
+            return [rec for rec in records if any([rssi != 0 for rssi in rec.rssis])]
+
+class RssiRecordFilterLogisticTransform:
+    pass #TODO: this might be interesting as rssi values have exponential fall-off
