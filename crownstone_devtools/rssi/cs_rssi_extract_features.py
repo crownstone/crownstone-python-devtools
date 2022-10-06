@@ -9,8 +9,8 @@ import argparse
 from pathlib import Path
 import os
 
-from tools.rssi.parsers.RssiNeighbourMessageAggregator import RssiNeighbourMessageAggregator
-from tools.rssi.parsers.SenderReceiverFilter import SenderReceiverFilter
+from crownstone_devtools.rssi.parsers.RssiNeighbourMessageAggregator import RssiNeighbourMessageAggregator
+from crownstone_devtools.rssi.parsers.SenderReceiverFilter import SenderReceiverFilter
 
 class FeatureExtractor:
     # def __init__(self, fileNameRegex, inputDirectory, workDirectory, outputDirectory, parsers, extractedFileSuffix=None, dryRun=False):

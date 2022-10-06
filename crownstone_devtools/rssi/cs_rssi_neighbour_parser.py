@@ -19,7 +19,7 @@ from crownstone_uart.core.uart.UartTypes import UartRxType, UartMessageType
 from crownstone_uart.core.uart.uartPackets.UartMessagePacket import UartMessagePacket
 from crownstone_uart.topics.SystemTopics import SystemTopics
 
-from tools.rssi.RssiNeighbourMessage import RssiNeighbourMessage
+from crownstone_devtools.rssi.RssiNeighbourMessage import RssiNeighbourMessage
 
 
 class UartRssiMessageParser:

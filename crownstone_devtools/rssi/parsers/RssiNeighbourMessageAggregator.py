@@ -1,5 +1,5 @@
-from tools.rssi.RssiNeighbourMessageRecord import RssiNeighbourMessageRecord
-from tools.rssi.RssiFeatures import RssiChannelFeatures, RssiRecordFilterByTime, RssiRecordFilterByCount, RssiRecordFilterByChannelNonZero
+from crownstone_devtools.rssi.RssiNeighbourMessageRecord import RssiNeighbourMessageRecord
+from crownstone_devtools.rssi.RssiFeatures import RssiChannelFeatures, RssiRecordFilterByTime, RssiRecordFilterByCount, RssiRecordFilterByChannelNonZero
 
 class RssiNeighbourMessageAggregator:
     """

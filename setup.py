@@ -15,9 +15,9 @@ setup(
     url="https://github.com/crownstone/crownstone-python-devtools",
     install_requires=list(package.strip() for package in open('requirements.txt')),
     scripts=[
-        'tools/cs_microapp_create_header',
-        'tools/cs_bluenet_log_client',
-        'tools/cs_bluenet_extract_log_strings',
+        'crownstone_devtools/cs_microapp_create_header',
+        'crownstone_devtools/cs_bluenet_log_client',
+        'crownstone_devtools/cs_bluenet_extract_log_strings',
     ],
     classifiers=[
         'Programming Language :: Python :: 3.7'

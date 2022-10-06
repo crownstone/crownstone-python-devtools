@@ -1,6 +1,6 @@
 from itertools import chain
 from datetime import timedelta
-from tools.rssi.RssiNeighbourMessageRecord import RssiNeighbourMessageRecord
+from crownstone_devtools.rssi.RssiNeighbourMessageRecord import RssiNeighbourMessageRecord
 from statistics import mean, stdev, median_grouped, variance, StatisticsError
 
 
