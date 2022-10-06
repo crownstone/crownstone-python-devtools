@@ -1,14 +1,3 @@
-
-import sys
-print(F"python executable: {sys.executable}")
-print(F"path: {print(sys.path)}")
-import os
-print(F"script working directory: {os.getcwd()}")
-
-import argparse
-from pathlib import Path
-import os
-
 from crownstone_devtools.rssi.parsers.RssiNeighbourMessageAggregator import RssiNeighbourMessageAggregator
 from crownstone_devtools.rssi.parsers.SenderReceiverFilter import SenderReceiverFilter
 
