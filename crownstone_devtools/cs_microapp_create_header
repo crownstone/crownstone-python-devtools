@@ -4,9 +4,9 @@
 
 import argparse
 
-from tools.util.CRC import crc16ccitt
+from crownstone_devtools.util.CRC import crc16ccitt
 
-from tools.util.MicroappBinaryHeaderPacket import MicroappBinaryHeaderPacket
+from crownstone_devtools.util.MicroappBinaryHeaderPacket import MicroappBinaryHeaderPacket
 
 parser = argparse.ArgumentParser(description='Manipulate microapp binary')
 parser.add_argument('-i', '--input',

@@ -1,4 +1,4 @@
-from tools.rssi.RssiNeighbourMessageRecord import RssiNeighbourMessageRecord
+from crownstone_devtools.rssi.RssiNeighbourMessageRecord import RssiNeighbourMessageRecord
 
 class SenderReceiverFilter:
     """

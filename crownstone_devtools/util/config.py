@@ -10,7 +10,7 @@ def setupDefaultCommandLineArguments(description):
                         help='The json file with key information, expected values: admin, member, guest, basic,' +
                              'serviceDataKey, localizationKey, meshApplicationKey, and meshNetworkKey')
     parser.add_argument('--configFile', default=None,
-                        help='The json all data required to configure the tools. See the template file or README.md for more information.')
+                        help='The json all data required to configure the crownstone_devtools. See the template file or README.md for more information.')
     return parser
 
 
@@ -29,7 +29,7 @@ def loadKeysFromConfig(ble_lib, tool_config):
     if "absolutePathToKeyFile" in tool_config and tool_config["absolutePathToKeyFile"] is not None:
         if "~" in tool_config["absolutePathToKeyFile"]:
             print("Usage of variables or ~ in the absolutePathToKeyFile is not allowed.")
-            print("When executing the tools as sudo (as some might) this would lead to a different file since it would resolve to /root/ instead of /home/<username/.")
+            print("When executing the crownstone_devtools as sudo (as some might) this would lead to a different file since it would resolve to /root/ instead of /home/<username/.")
             print("To avoid common errors, this is not allowed.")
             raise ValueError("Invalid absolutePathToKeyFile.")
 
@@ -66,7 +66,7 @@ def getToolConfig(file_path, parser):
             raise FileNotFoundError("The provided configFile in the commandline argument cannot be found. Double check the path.")
 
     if config is None:
-        # search for the tool config either in the root dir of the tools, or the config dir of the tools.
+        # search for the tool config either in the root dir of the crownstone_devtools, or the config dir of the crownstone_devtools.
         if path.exists(path.join(file_path, "tool_config.json")):
             config = loadToolConfig(path.join(file_path, "tool_config.json"))
         elif path.exists(path.join(file_path, "config", "tool_config.json")):
@@ -74,14 +74,14 @@ def getToolConfig(file_path, parser):
         else:
             config = {"bleAdapterAddress": None}
 
-        # as a backup, check if there is a key file in the root of the tools or the config dir of the tools.
+        # as a backup, check if there is a key file in the root of the crownstone_devtools or the config dir of the crownstone_devtools.
         if "absolutePathToKeyFile" not in config and "keys" not in config:
             if path.exists(path.join(file_path, "keyFile.json")):
                 config["absolutePathToKeyFile"] = path.join(file_path, "keyFile.json")
             elif path.exists(path.join(file_path, "config", "keyFile.json")):
                 config["absolutePathToKeyFile"] = path.join(file_path, "config", "keyFile.json")
 
-    # finally, commandline args will overwrite anything in the tools.
+    # finally, commandline args will overwrite anything in the crownstone_devtools.
     if args.bleAdapterAddress is not None:
         config["bleAdapterAddress"] = args.bleAdapterAddress
 
