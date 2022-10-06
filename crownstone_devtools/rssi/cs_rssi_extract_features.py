@@ -1,3 +1,10 @@
+
+import sys
+print(F"python executable: {sys.executable}")
+print(F"path: {print(sys.path)}")
+import os
+print(F"script working directory: {os.getcwd()}")
+
 import argparse
 from pathlib import Path
 import os
@@ -116,6 +123,7 @@ if __name__=="__main__":
     argparser.add_argument("-v", "--verbose", default=False, action='store_true')
 
     pargs = argparser.parse_args()
+
     print(F"{__file__} called as with args: {pargs}")
 
     # create parser objects for the pipe line, just passing all command line arguments to constructor
