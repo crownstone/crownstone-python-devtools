@@ -35,7 +35,7 @@ class UartRssiMessageParser:
 		self.verbose = verbose
 		self.logFileName = None
 
-		self.not_labeled = "not labeled"
+		self.not_labeled = "None, not labeled"
 		self.lastPressed = self.not_labeled
 
 		if outputDirectory.exists():
@@ -57,12 +57,13 @@ class UartRssiMessageParser:
 
 		# a bunch of predefined labels to give semantic meaning to incoming uart messages.
 		# the last call to press() determines which of these will be added to the log when receiving a uart msg.
-
-		self.labels = {
+		self.special_keys = {
 			"enter": "# start experiment",
 			"space": "# stop experiment",
 			"backspace": self.not_labeled,
+		}
 
+		self.labels = {
 			"0": "I am not in between A and B",
 			"1": "I am in between A and B",
 
@@ -114,8 +115,17 @@ class UartRssiMessageParser:
 
 	def press(self, key):
 		""" ssh keyboard callback """
-		self.lastPressed = F"{str(key)}, {self.labels.get(key, self.not_labeled)}"
-		self.log(F"{self.getCurrentTimeString()}, keyboard event: {self.lastPressed}")
+		keyboardeventstr = self.not_labeled
+
+		if key in self.special_keys:
+			keyboardeventstr = F"{str(key)}, {self.special_keys.get(key, self.not_labeled)}"
+			if key == 'backspace':
+				self.lastPressed = self.not_labeled
+		elif key in self.labels:
+			self.lastPressed = F"{str(key)}, {self.labels.get(key, self.not_labeled)}"
+			keyboardeventstr = self.lastPressed
+
+		self.log(F"{self.getCurrentTimeString()}, keyboard event: {keyboardeventstr}")
 
 	def getCurrentTimeString(self):
 		""" extracted method for uniform formatting. change style here and all logs will be updated. """

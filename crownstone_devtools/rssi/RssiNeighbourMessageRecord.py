@@ -28,7 +28,11 @@ class RssiNeighbourMessageRecord:
         self.rssis[1] = int(vals[next(i)])
         self.rssis[2] = int(vals[next(i)])
         self.msgNumber = int(vals[next(i)])
-        self.labelint = int(vals[next(i)])
+
+        # parameter is a string representation of a key, possibly 'enter', 'space' or 'None'.
+        # labelin will be the ascii value if the keycode is a-z or 0-9. (ranges 97-122 resp. 48-57.)
+        keycode = vals[next(i)]
+        self.labelint = ord(keycode) if len(keycode) == 1 else 0
         self.labelstr = str(vals[next(i)]).strip()
         self.initialized = True
         return self
