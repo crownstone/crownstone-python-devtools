@@ -16,7 +16,7 @@ class SenderReceiverFilter:
     def run(self, inFile, outFile):
         """
         outputs lines in inPath to outPath if they match sender and receiver.
-        Comments are forwarded too.
+        Comments, lines starting with a #, are forwarded too.
         """
         print("running SenderReceiverFilter")
         for line in inFile:
