@@ -23,17 +23,20 @@ from crownstone_devtools.rssi.RssiNeighbourMessage import RssiNeighbourMessage
 
 
 class UartRssiMessageParser:
-	def __init__(self, outputDirectory, workingDirectory, logToFile=True):
+	def __init__(self, outputDirectory, workingDirectory, logToFile=True, verbose=False):
 		"""
 		logToFile: if false, script only produces terminal output, otherwise a logfile is created.
 		workingDirectory: as long as a log file is actively written to, it will be kept here
 		outputDirectory: when a log file is complete it is copied to this dir. (happens when a new log file is created)
 		"""
 		self.uartMessageSubscription = UartEventBus.subscribe(SystemTopics.uartNewMessage, self.handleUartMessage)
-		self.lastPressed = None
-		self.logFileName = None
 
 		self.logToFile = logToFile
+		self.verbose = verbose
+		self.logFileName = None
+
+		self.not_labeled = "None, not labeled"
+		self.lastPressed = self.not_labeled
 
 		if outputDirectory.exists():
 			print(F"setting outputdir to: {outputDirectory}")
@@ -41,7 +44,6 @@ class UartRssiMessageParser:
 		else:
 			print(F"outputdir not found, using . instead")
 			self.outputDirectory = Path(".")
-
 
 		if workingDirectory.exists():
 			print(F"setting workdir to: {workingDirectory}")
@@ -55,12 +57,52 @@ class UartRssiMessageParser:
 
 		# a bunch of predefined labels to give semantic meaning to incoming uart messages.
 		# the last call to press() determines which of these will be added to the log when receiving a uart msg.
+		self.special_keys = {
+			"enter": "# start experiment",
+			"space": "# stop experiment",
+			"backspace": self.not_labeled,
+		}
+
 		self.labels = {
 			"0": "I am not in between A and B",
 			"1": "I am in between A and B",
 
 			"2": "I am not home",
 			"3": "I am home",
+
+			"4": "Reserved label: 4",
+			"5": "Reserved label: 5",
+			"6": "Reserved label: 6",
+			"7": "Reserved label: 7",
+			"8": "Reserved label: 8",
+			"9": "Reserved label: 9",
+
+			"a": "I am in room: a",
+			"b": "I am in room: b",
+			"c": "I am in room: c",
+			"d": "I am in room: d",
+			"e": "I am in room: e",
+			"f": "I am in room: f",
+			"g": "I am in room: g",
+			"h": "I am in room: h",
+			"i": "I am in room: i",
+			"j": "I am in room: j",
+			"k": "I am in room: k",
+			"l": "I am in room: l",
+			"m": "I am in room: m",
+			"n": "I am in room: n",
+			"o": "I am in room: o",
+			"p": "I am in room: p",
+			"q": "I am in room: q",
+			"r": "I am in room: r",
+			"s": "I am in room: s",
+			"t": "I am in room: t",
+			"u": "I am in room: u",
+			"v": "I am in room: v",
+			"w": "I am in room: w",
+			"x": "I am in room: x",
+			"y": "I am in room: y",
+			"z": "I am in room: z",
 		}
 
 	def handleUartMessage(self, messagePacket: UartMessagePacket):
@@ -73,8 +115,17 @@ class UartRssiMessageParser:
 
 	def press(self, key):
 		""" ssh keyboard callback """
-		self.lastPressed = F"{str(key)}, {self.labels.get(key, 'Unknown label')}"
-		self.log(F"{self.getCurrentTimeString()}, keyboard event: {self.lastPressed}")
+		keyboardeventstr = self.not_labeled
+
+		if key in self.special_keys:
+			keyboardeventstr = F"{str(key)}, {self.special_keys.get(key, self.not_labeled)}"
+			if key == 'backspace':
+				self.lastPressed = self.not_labeled
+		elif key in self.labels:
+			self.lastPressed = F"{str(key)}, {self.labels.get(key, self.not_labeled)}"
+			keyboardeventstr = self.lastPressed
+
+		self.log(F"{self.getCurrentTimeString()}, keyboard event: {keyboardeventstr}")
 
 	def getCurrentTimeString(self):
 		""" extracted method for uniform formatting. change style here and all logs will be updated. """
@@ -115,7 +166,7 @@ class UartRssiMessageParser:
 		if self.logToFile:
 			with open(self.workingDirectory / self.getLogFilename(), "a+") as logfile:
 				print(logstr, file=logfile)
-		if not silent:
+		if not silent or self.verbose:
 			print(logstr)
 
 	def finish(self):
@@ -130,15 +181,29 @@ if __name__=="__main__":
 	argparser.add_argument("-w", "--workingDirectory", type=Path)
 	argparser.add_argument("-p", "--port", type=str)
 	argparser.add_argument("-l", "--logToFile", action='store_false')
+	argparser.add_argument("-v", "--verbose", action='store_true')
+	argparser.add_argument("--no_uart", action='store_true')
+	argparser.add_argument("--no_escape", action='store_true')
 	pargs = argparser.parse_args()
+
+	print(F"""
+	esc: {"disabled by script parameter 'no_escape'" if pargs.no_escape else "quit the script (hotkey can be disabled with script parameter 'no_escape')"}
+	enter: label start experiment
+	space: label stop experiment
+	backspace: clear current label
+	
+	0: not in between
+	1: in between
+	2: not home
+	3: home
+	4-9: reserved but functional extra labels 
+	a-z: room ids
+	""")
 
 	# parser object waits for events of the uart event bus.
 	outDir = pargs.outputDirectory or Path('.')
 	workDir = pargs.workingDirectory or outDir
-	parser = UartRssiMessageParser(outputDirectory=outDir, workingDirectory=workDir, logToFile=pargs.logToFile)
-
-	# Init the Crownstone UART lib.
-	uart = CrownstoneUart()
+	parser = UartRssiMessageParser(outputDirectory=outDir, workingDirectory=workDir, logToFile=pargs.logToFile, verbose=pargs.verbose)
 
 	if pargs.port:
 		portname = pargs.port
@@ -147,15 +212,20 @@ if __name__=="__main__":
 		if platform.uname().system == 'Windows':
 			import serial.tools.list_ports as port_list
 			ports = list(port_list.comports())
-			# bind to the first port...
+			# bind to the first COM port and hope it is the right one...
 			portname = ports[0].name
 
-	uart.initialize_usb_sync(port=portname)
+	uart = None
+	if pargs.no_uart == False:
+		# Init the Crownstone UART lib.
+		uart = CrownstoneUart()
+		uart.initialize_usb_sync(port=portname)
 
 	# The try except part is just to catch a control+c to gracefully stop the UART lib.
+
 	try:
 		if os.isatty(sys.stdin.fileno()):
-			listen_keyboard(on_press=lambda k: parser.press(k), until="space")
+			listen_keyboard(on_press=lambda k: parser.press(k), until=None if pargs.no_escape else "esc")
 			print("space was pressed, exiting")
 		else:
 			while True:
@@ -165,6 +235,9 @@ if __name__=="__main__":
 	finally:
 		print("stopping parser")
 		parser.finish()
-		print("stopping uart")
-		uart.stop()
+
+		if uart:
+			print("stopping uart")
+			uart.stop()
+
 	print("Stopped")

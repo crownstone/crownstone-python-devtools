@@ -1,7 +1,7 @@
 from itertools import chain
 from datetime import timedelta
 from crownstone_devtools.rssi.RssiNeighbourMessageRecord import RssiNeighbourMessageRecord
-from statistics import mean, stdev, median_grouped, variance, StatisticsError
+from statistics import mean, stdev, median_grouped, mode, geometric_mean
 
 
 class RssiChannelFeatures:
@@ -21,29 +21,48 @@ class RssiChannelFeatures:
         self.recordCount = None
         self.validRecordCount = None
         self.mean = None
+        self.geometric_mean = None
         self.stdev = None
         self.median_grouped = None
+        self.label = None
+        self.min_max_gap = None
 
     def load(self, records):
+        """
+        Reads `records` (a list of RssiNeighbourMessageRecord objects)` and computes statistics.
+
+        All records must be 'valid'.
+          - If self.channel is set: all records.rssis[self.channel] != 0 must hold, or
+          - Else self.channel is None: at least one rssi value per record must exist.
+        """
         self.recordCount = len(records)
         rssis = [self.toRssi(rec) for rec in records]
 
         if len(rssis) < 2:
             print("too few arguments to compute statistics")
             self.mean = ""
+            self.geometric_mean = ""
             self.stdev = ""
             self.median_grouped = ""
+            self.label = ""
+            self.min_max_gap = ""
         else:
             self.mean = mean(rssis)
+            self.geometric_mean = geometric_mean(rssis)
             self.stdev = stdev(rssis)
             self.median_grouped = median_grouped(rssis)
+
+            # `reversed` ensures priority is given to the last record in tie breaks.
+            self.label = mode(reversed([rec.labelint for rec in records]))
+
+            self.min_max_gap = max(rssis)-min(rssis)
 
         if any([val == 0 for val in [self.mean, self.stdev, self.median_grouped]]):
             print("zero value")
 
     def toRssi(self, record):
         """
-        Selects the rssi value of the relevant channel or the average if channel is None.
+        Returns the rssi value of the selected channel or the average of non-zero channels if self.channel is None.
         """
         if self.channel is not None:
             return record.rssis[self.channel]
@@ -59,10 +78,10 @@ class RssiChannelFeatures:
     def columnNames():
         """
         Returns a list of member variables that determine how this object will be stringified.
-        Elements must exactly match member variable names.
+        Elements must exactly match member variable names. E.g. "mean" corresponds to self.mean.
         """
         # return ["channel", "recordCount", "mean", "stdev"]
-        return ["mean", "stdev", "median_grouped"]
+        return ["label", "mean", "geometric_mean", "stdev", "median_grouped", "min_max_gap"]
 
     def values(self):
         """
