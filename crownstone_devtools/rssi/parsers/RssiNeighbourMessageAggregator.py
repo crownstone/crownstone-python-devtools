@@ -22,7 +22,7 @@ class RssiNeighbourMessageAggregator:
         ]
 
         channels = list(range(3)) + [None]
-        names = [F"channel-{i}" if i else "all-channels" for i in channels]
+        names = [F"channel-{i}" if i is not None else "all-channels" for i in channels]
         self.channelFilters = [
             RssiRecordFilterByChannelNonZero(name, chan)
                 for chan,name in zip(channels,names)]
