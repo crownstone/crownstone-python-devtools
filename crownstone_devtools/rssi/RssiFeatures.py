@@ -1,7 +1,7 @@
 from itertools import chain
 from datetime import timedelta
 from crownstone_devtools.rssi.RssiNeighbourMessageRecord import RssiNeighbourMessageRecord
-from statistics import mean, stdev, median_grouped, mode, geometric_mean
+from statistics import mean, stdev, median_grouped, mode
 
 
 class RssiChannelFeatures:
@@ -21,7 +21,6 @@ class RssiChannelFeatures:
         self.recordCount = None
         self.validRecordCount = None
         self.mean = None
-        self.geometric_mean = None
         self.stdev = None
         self.median_grouped = None
         self.label = None
@@ -41,14 +40,12 @@ class RssiChannelFeatures:
         if len(rssis) < 2:
             print("too few arguments to compute statistics")
             self.mean = ""
-            self.geometric_mean = ""
             self.stdev = ""
             self.median_grouped = ""
             self.label = ""
             self.min_max_gap = ""
         else:
             self.mean = mean(rssis)
-            self.geometric_mean = geometric_mean(rssis)
             self.stdev = stdev(rssis)
             self.median_grouped = median_grouped(rssis)
 
@@ -81,7 +78,7 @@ class RssiChannelFeatures:
         Elements must exactly match member variable names. E.g. "mean" corresponds to self.mean.
         """
         # return ["channel", "recordCount", "mean", "stdev"]
-        return ["label", "mean", "geometric_mean", "stdev", "median_grouped", "min_max_gap"]
+        return ["label", "mean", "stdev", "median_grouped", "min_max_gap"]
 
     def values(self):
         """
