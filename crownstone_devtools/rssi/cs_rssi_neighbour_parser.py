@@ -125,7 +125,7 @@ class UartRssiMessageParser:
 			self.lastPressed = F"{str(key)}, {self.labels.get(key, self.not_labeled)}"
 			keyboardeventstr = self.lastPressed
 
-		self.log(F"{self.getCurrentTimeString()}, keyboard event: {keyboardeventstr}")
+		self.log(F"# {self.getCurrentTimeString()}, keyboard event: {keyboardeventstr}")
 
 	def getCurrentTimeString(self):
 		""" extracted method for uniform formatting. change style here and all logs will be updated. """
