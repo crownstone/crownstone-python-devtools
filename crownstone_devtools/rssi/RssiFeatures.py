@@ -37,12 +37,20 @@ class RssiChannelFeatures:
         self.recordCount = len(records)
         rssis = [self.toRssi(rec) for rec in records]
 
-        if len(rssis) < 2:
+        if len(rssis) < 1:
             print("too few arguments to compute statistics")
             self.mean = ""
             self.stdev = ""
             self.median_grouped = ""
             self.label = ""
+            self.min_max_gap = ""
+        elif len(rssis) == 1:
+            rec = records[0]
+            rssi = self.toRssi(rec)
+            self.mean = rssi
+            self.stdev = ""
+            self.median_grouped = rssi
+            self.label = rec.labelint
             self.min_max_gap = ""
         else:
             self.mean = mean(rssis)
@@ -53,9 +61,6 @@ class RssiChannelFeatures:
             self.label = mode(reversed([rec.labelint for rec in records]))
 
             self.min_max_gap = max(rssis)-min(rssis)
-
-        if any([val == 0 for val in [self.mean, self.stdev, self.median_grouped]]):
-            print("zero value")
 
     def toRssi(self, record):
         """
@@ -77,7 +82,6 @@ class RssiChannelFeatures:
         Returns a list of member variables that determine how this object will be stringified.
         Elements must exactly match member variable names. E.g. "mean" corresponds to self.mean.
         """
-        # return ["channel", "recordCount", "mean", "stdev"]
         return ["label", "mean", "stdev", "median_grouped", "min_max_gap"]
 
     def values(self):
@@ -111,7 +115,7 @@ class RssiRecordFilterByTime:
         if len(retval) < 2:
             if len(records) >= 2:
                 delta = records[-1].timestamp - records[-2].timestamp
-                print("Filtered too much! Time between last updates was:", delta)
+                print("RssiRecordFilterByTime results in less than 2 records! Time between last updates was:", delta)
 
         return retval
 
