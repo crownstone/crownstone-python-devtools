@@ -13,7 +13,7 @@ class RssiNeighbourMessageAggregator:
         self.maxListSize = 50
 
         self.tailFilters = [
-            RssiRecordFilterByCount("last-record", 1),
+            RssiRecordFilterByCount("last-1-record", 1),
             RssiRecordFilterByCount("last-5-records", 5),
             RssiRecordFilterByCount("last-10-records", 10),
             RssiRecordFilterByCount("last-50-records", 50),
@@ -35,7 +35,7 @@ class RssiNeighbourMessageAggregator:
         Comments are forwarded too.
         """
         if self.verbose:
-            print("running RssiNeighbourMessageAggregator")
+            print("Running RssiNeighbourMessageAggregator")
 
         printColumnHeader = True
         for line in inFile:
@@ -52,16 +52,18 @@ class RssiNeighbourMessageAggregator:
                 self.output(F"# {header}", outFile)
                 printColumnHeader = False
 
-            if line[0] == "#":
-                # comments go straight into the next file
+            if not line.strip() or line[0] == "#":
+                # comments and empty lines go straight into the next file
                 outputline = line
             else:
                 # each line, all filters must run to produce their statistics
                 try:
+                    if self.verbose:
+                        print(F"parsing {line}")
+                        print(F"cached messages: {len(self.messageList)}")
+
                     record = RssiNeighbourMessageRecord.fromString(line)
                     self.update(record) # update cached messageList
-                    if self.verbose:
-                        print(F"cached messages: {len(self.messageList)}, newest entry: {self.messageList[-1]}")
 
                     # create csv line
                     columnValues = []
@@ -81,13 +83,18 @@ class RssiNeighbourMessageAggregator:
                             columnValues += statsvalues
 
                             if self.verbose:
-                                print(F"stats: {channelfilter.name}-{tailfilter.name}:",statsvalues, str(stats))
+                                print(F"stats: {channelfilter.name}-{tailfilter.name}:", dict(zip(RssiChannelFeatures.columnNames(), statsvalues)))
                     outputline = ",".join([str(val) for val in columnValues])
 
-                except ValueError:
+                except ValueError as e:
+                    errormessage = "Failed to construct RssiNeighbourMessageRecord"
+                    print(F"Error: {errormessage}")
+                    print(e)
+                    print(F"line: \'{line}\'")
+
                     if self.verbose:
-                        errormessage = "Failed to construct RssiNeighbourMessageRecord"
-                        print(F"{line} # Error: {errormessage}")
+                        raise
+
                     outputline = None
 
             # after parsing line, produce output to file/terminal
