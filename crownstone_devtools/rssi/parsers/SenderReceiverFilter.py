@@ -35,9 +35,14 @@ class SenderReceiverFilter:
                         # accept record
                         outputline = str(record)
                 except ValueError:
+                    errormessage = "Failed to construct RssiNeighbourMessageRecord"
+                    print(F"Error: {errormessage}")
+                    print(e)
+                    print(F"line: \'{line}\'")
+
                     if self.verbose:
-                        errormessage = "Failed to construct RssiNeighbourMessageRecord"
-                        print(F"{line} # Error: {errormessage}")
+                        raise
+
                     outputline = None
 
             self.output(outputline,outFile)
