@@ -118,6 +118,7 @@ if __name__=="__main__":
     argparser.add_argument("-f", "--fileNameRegex", type=str)
     argparser.add_argument("--suffix", type=str)
     argparser.add_argument("-d", "--dryRun", action='store_true')
+    argparser.add_argument("--debug", action='store_true')
     argparser.add_argument("-s", "--sender", type=int)
     argparser.add_argument("-r", "--receiver", type=int)
     argparser.add_argument("-v", "--verbose", default=False, action='store_true')

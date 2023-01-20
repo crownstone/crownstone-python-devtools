@@ -8,6 +8,7 @@ class RssiNeighbourMessageAggregator:
     """
     def __init__(self, *args, **kwargs):
         self.verbose = kwargs.get('verbose', False)
+        self.debug = kwargs.get('debug', False)
         self.dryRun = kwargs.get('dryRun', False)
         self.messageList = []
         self.maxListSize = 50
@@ -92,7 +93,7 @@ class RssiNeighbourMessageAggregator:
                     print(e)
                     print(F"line: \'{line}\'")
 
-                    if self.verbose:
+                    if self.debug:
                         raise
 
                     outputline = None

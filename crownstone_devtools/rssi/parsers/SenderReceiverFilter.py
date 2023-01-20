@@ -11,6 +11,7 @@ class SenderReceiverFilter:
         self.receiver = kwargs.get('receiver', None)
         self.verbose = kwargs.get('verbose', False)
         self.dryRun = kwargs.get('dryRun', False)
+        self.debug = kwargs.get('debug', False)
         print("SenderReceiverFilter", self.__dict__)
 
     def run(self, inFile, outFile):
@@ -22,7 +23,7 @@ class SenderReceiverFilter:
         for line in inFile:
             outputline = None
 
-            if line[0] == "#":
+            if not line.strip() or line[0] == "#":
                 outputline = line
             else:
                 try:
@@ -34,13 +35,13 @@ class SenderReceiverFilter:
                     else:
                         # accept record
                         outputline = str(record)
-                except ValueError:
+                except ValueError as e:
                     errormessage = "Failed to construct RssiNeighbourMessageRecord"
                     print(F"Error: {errormessage}")
                     print(e)
                     print(F"line: \'{line}\'")
 
-                    if self.verbose:
+                    if self.debug:
                         raise
 
                     outputline = None
