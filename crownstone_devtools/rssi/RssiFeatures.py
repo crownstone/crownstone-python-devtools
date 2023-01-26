@@ -50,7 +50,7 @@ class RssiChannelFeatures:
             self.mean = rssi
             self.stdev = ""
             self.median_grouped = rssi
-            self.label = rec.labelint
+            self.label = rec.labelchr
             self.min_max_gap = ""
         else:
             self.mean = mean(rssis)
@@ -58,7 +58,7 @@ class RssiChannelFeatures:
             self.median_grouped = median_grouped(rssis)
 
             # `reversed` ensures priority is given to the last record in tie breaks.
-            self.label = mode(reversed([rec.labelint for rec in records]))
+            self.label = mode(reversed([rec.labelchr for rec in records]))
 
             self.min_max_gap = max(rssis)-min(rssis)
 

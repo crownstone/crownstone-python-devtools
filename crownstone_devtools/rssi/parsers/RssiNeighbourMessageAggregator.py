@@ -39,7 +39,7 @@ class RssiNeighbourMessageAggregator:
             print("Running RssiNeighbourMessageAggregator")
 
         printColumnHeader = True
-        for line in inFile:
+        for lineindex, line in enumerate(inFile):
             outputline = None
 
             if printColumnHeader:
@@ -53,17 +53,23 @@ class RssiNeighbourMessageAggregator:
                 self.output(F"# {header}", outFile)
                 printColumnHeader = False
 
+            if self.verbose:
+                # adding 1 to index because most spreadsheet editors start counting at 1.
+                print("")
+                print(F"parsing line #{lineindex + 1}: {line.strip()}")
+                print(F"cached messages: {len(self.messageList)}")
+
             if not line.strip() or line[0] == "#":
                 # comments and empty lines go straight into the next file
                 outputline = line
             else:
                 # each line, all filters must run to produce their statistics
                 try:
-                    if self.verbose:
-                        print(F"parsing {line}")
-                        print(F"cached messages: {len(self.messageList)}")
 
                     record = RssiNeighbourMessageRecord.fromString(line)
+                    if self.verbose:
+                        print(F"extracted record: {record.__dict__}")
+
                     self.update(record) # update cached messageList
 
                     # create csv line

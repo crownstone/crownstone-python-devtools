@@ -5,20 +5,30 @@ class RssiNeighbourMessageRecord:
     a class that encapsulates the records that are logged by the parser (*-raw.csv).
     """
     def __init__(self):
+        # iso standard format for datetime
         self.timestamp = None
 
+        # crownstone ids
         self.receiverId = None
         self.senderId = None
+
+        # values (neg. ints) of the channels 37-39.
         self.rssis = [None] * 3
 
-        # one of these will be set.
+        # sequence number for administration of message drops
         self.msgNumber = None
-        self.labelint = None
+
+        # parameter is a string representation of a key, possibly 'enter', 'space' or 'None'.
+        self.labelchr = None
+
+        # value will be a human readible/semantic value corresponding to labelchr
         self.labelstr = ""
 
+        # runtime state, internal use only
         self.initialized = False
 
     def loadFromString(self, s):
+        print(F"s:={s}")
         vals = s.split(",")
         i = iter(range(10))
         self.timestamp = datetime.fromisoformat(vals[next(i)])
@@ -28,11 +38,7 @@ class RssiNeighbourMessageRecord:
         self.rssis[1] = int(vals[next(i)])
         self.rssis[2] = int(vals[next(i)])
         self.msgNumber = int(vals[next(i)])
-
-        # parameter is a string representation of a key, possibly 'enter', 'space' or 'None'.
-        # labelin will be the ascii value if the keycode is a-z or 0-9. (ranges 97-122 resp. 48-57.)
-        keycode = vals[next(i)]
-        self.labelint = ord(keycode) if len(keycode) == 1 else 0
+        self.labelchr = vals[next(i)]
         self.labelstr = str(vals[next(i)]).strip()
         self.initialized = True
         return self
@@ -50,7 +56,7 @@ class RssiNeighbourMessageRecord:
                                            self.rssis[1],
                                            self.rssis[2],
                                            self.msgNumber,
-                                           self.labelint,
+                                           self.labelchr,
                                            self.labelstr]])
         # return str(self.__dict__)
 
