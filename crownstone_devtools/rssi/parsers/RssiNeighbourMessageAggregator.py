@@ -10,6 +10,8 @@ class RssiNeighbourMessageAggregator:
         self.verbose = kwargs.get('verbose', False)
         self.debug = kwargs.get('debug', False)
         self.dryRun = kwargs.get('dryRun', False)
+        self.allowIncompleteRecords = kwargs.get('allowIncompleteRecords',False)
+
         self.messageList = []
         self.maxListSize = 50
 
@@ -108,11 +110,17 @@ class RssiNeighbourMessageAggregator:
             self.output(outputline, outFile)
 
     def output(self, outputline, outFile):
+        if self.verbose:
+            print(F"output: '{outputline}'")
+
+        allValuesAreDefined = all(outputline.split(","))
+        if not self.allowIncompleteRecords and not allValuesAreDefined:
+            print("*** stripping incomplete record ***")
+            outputline = None
+
         if outputline is not None:
             if not self.dryRun:
                 print(outputline, file=outFile)
-            if self.verbose:
-                print(F"output: {outputline}")
 
     def update(self, rssiNeighbourMessageRecord):
         """
