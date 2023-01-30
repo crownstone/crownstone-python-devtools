@@ -4,20 +4,100 @@ from crownstone_devtools.rssi.RssiNeighbourMessageRecord import RssiNeighbourMes
 from statistics import mean, stdev, median_grouped, mode
 
 
-class RssiChannelFeatures:
+class RssiChannelBasicFeatures:
     """
     Object that computes statistics over a list of RssiNeighbourMessageRecord objects.
+    Only includes features that can be constructed based on a single record.
     Features that cannot be computed/constructed are set to "".
 
     `channel`: 0 based channel id. or None for 'all non-zero values'.
     `records`: list of RssiNeighbourMessageRecord instances.
     """
-    def __init__(self, channel):
+    def __init__(self):
+        self.channel = None
+        self.recordCount = None
+        self.validRecordCount = None
+        self.mean = None
+        self.label = None
+
+    def setChannel(self, channel):
         if channel not in range(3) and channel is not None:
             raise ValueError(F"channel id must be 0,1 or 2, got {channel}")
 
         self.channel = channel
 
+    def load(self, records):
+        """
+        Reads `records` (a list of RssiNeighbourMessageRecord objects)` and computes statistics.
+
+        All records must be 'valid'.
+          - If self.channel is set: all records.rssis[self.channel] != 0 must hold, or
+          - Else self.channel is None: at least one rssi value per record must exist.
+        """
+        self.recordCount = len(records)
+        rssis = [self.toRssi(rec) for rec in records]
+
+        if len(rssis) < 1:
+            print("too few arguments to compute statistics")
+            self.mean = ""
+            self.label = ""
+        elif len(rssis) == 1:
+            rec = records[0]
+            rssi = self.toRssi(rec)
+            self.mean = rssi
+            self.label = rec.labelchr
+        else:
+            self.mean = mean(rssis)
+            # `reversed` ensures priority is given to the last record in tie breaks.
+            self.label = mode(reversed([rec.labelchr for rec in records]))
+
+
+    def toRssi(self, record):
+        """
+        Returns the rssi value of the selected channel or the average of non-zero channels if self.channel is None.
+        """
+        if self.channel is not None:
+            return record.rssis[self.channel]
+        nonzeroes = [rssi for rssi in record.rssis if rssi != 0]
+        if nonzeroes:
+            return mean(nonzeroes)
+        return None
+
+    def messagesDropCount(self, msgList):
+        pass
+
+    @staticmethod
+    def columnNames():
+        """
+        Returns a list of member variables that determine how this object will be stringified.
+        Elements must exactly match member variable names. E.g. "mean" corresponds to self.mean.
+        """
+        return ["label", "mean"]
+
+    def values(self):
+        """
+        Returns a list with values for the columns
+        """
+        return [getattr(self, columnname) for columnname in self.columnNames()]
+
+    def __str__(self):
+        """
+        creates a comma separated string based on the column names by looking up
+        the values of the member variables with that exact name.
+        """
+        return ",".join([str(val) for val in self.values()])
+
+class RssiChannelExtendedFeatures:
+    """
+    Object that computes statistics over a list of RssiNeighbourMessageRecord objects.
+    Includes features that require multiple records as well as those that can be computed using a single record.
+    Features that cannot be computed/constructed are set to "".
+
+    `channel`: 0 based channel id. or None for 'all non-zero values'.
+    `records`: list of RssiNeighbourMessageRecord instances.
+    """
+    def __init__(self):
+        self.channel = None
         self.recordCount = None
         self.validRecordCount = None
         self.mean = None
@@ -25,6 +105,12 @@ class RssiChannelFeatures:
         self.median_grouped = None
         self.label = None
         self.min_max_gap = None
+
+    def setChannel(self, channel):
+        if channel not in range(3) and channel is not None:
+            raise ValueError(F"channel id must be 0,1 or 2, got {channel}")
+
+        self.channel = channel
 
     def load(self, records):
         """
@@ -101,9 +187,10 @@ class RssiRecordFilterByTime:
     """
     named object that pre-filters rssi messages. Can be used multiple times by calling run()
     """
-    def __init__(self, name, seconds):
+    def __init__(self, name, seconds, statsGenerator):
         self.name = name
         self.seconds = seconds
+        self.statsGenerator = statsGenerator
 
     def run(self, records):
         if not records:
@@ -123,9 +210,10 @@ class RssiRecordFilterByCount:
     """
     named object that pre-filters rssi messages. Can be used multiple times by calling run()
     """
-    def __init__(self, name, count):
+    def __init__(self, name, count, statsGenerator):
         self.name = name
         self.count = count
+        self.statsGenerator = statsGenerator
 
     def run(self, records):
         if len(records) < self.count:

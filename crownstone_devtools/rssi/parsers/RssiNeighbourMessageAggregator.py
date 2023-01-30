@@ -1,5 +1,5 @@
 from crownstone_devtools.rssi.RssiNeighbourMessageRecord import RssiNeighbourMessageRecord
-from crownstone_devtools.rssi.RssiFeatures import RssiChannelFeatures, RssiRecordFilterByTime, RssiRecordFilterByCount, RssiRecordFilterByChannelNonZero
+from crownstone_devtools.rssi.RssiFeatures import RssiChannelBasicFeatures, RssiChannelExtendedFeatures, RssiRecordFilterByTime, RssiRecordFilterByCount, RssiRecordFilterByChannelNonZero
 
 class RssiNeighbourMessageAggregator:
     """
@@ -10,17 +10,19 @@ class RssiNeighbourMessageAggregator:
         self.verbose = kwargs.get('verbose', False)
         self.debug = kwargs.get('debug', False)
         self.dryRun = kwargs.get('dryRun', False)
+        self.allowIncompleteRecords = kwargs.get('allowIncompleteRecords',False)
+
         self.messageList = []
         self.maxListSize = 50
 
         self.tailFilters = [
-            RssiRecordFilterByCount("last-1-record", 1),
-            RssiRecordFilterByCount("last-5-records", 5),
-            RssiRecordFilterByCount("last-10-records", 10),
-            RssiRecordFilterByCount("last-50-records", 50),
-            RssiRecordFilterByTime("last-10-seconds", 10),
-            RssiRecordFilterByTime("last-30-seconds", 30),
-            RssiRecordFilterByTime("last-5-minutes", 60*5),
+            RssiRecordFilterByCount("last-1-record", 1, RssiChannelBasicFeatures()),
+            RssiRecordFilterByCount("last-5-records", 5, RssiChannelExtendedFeatures()),
+            RssiRecordFilterByCount("last-10-records", 10, RssiChannelExtendedFeatures()),
+            RssiRecordFilterByCount("last-50-records", 50, RssiChannelExtendedFeatures()),
+            RssiRecordFilterByTime("last-10-seconds", 10, RssiChannelExtendedFeatures()),
+            RssiRecordFilterByTime("last-30-seconds", 30, RssiChannelExtendedFeatures()),
+            RssiRecordFilterByTime("last-5-minutes", 60*5, RssiChannelExtendedFeatures()),
         ]
 
         channels = list(range(3)) + [None]
@@ -46,7 +48,7 @@ class RssiNeighbourMessageAggregator:
                 columnNames = []
                 for channelfilter in self.channelFilters:
                     for tailfilter in self.tailFilters:
-                        for statisticname in RssiChannelFeatures.columnNames():
+                        for statisticname in tailfilter.statsGenerator.columnNames():
                             columnNames.append(F"{channelfilter.name}_{tailfilter.name}_{statisticname}")
                 header = ", ".join(columnNames)
 
@@ -82,15 +84,16 @@ class RssiNeighbourMessageAggregator:
                             filteredRecords = tailfilter.run(filteredRecords) # e.g. last-10-records
 
                             # obtain statistics (possibly multiple per set of filters)
-                            stats = RssiChannelFeatures(channelfilter.channel)
-                            stats.load(filteredRecords)
-                            statsvalues = stats.values()
+                            statsGen = tailfilter.statsGenerator
+                            statsGen.setChannel(channelfilter.channel)
+                            statsGen.load(filteredRecords)
+                            statsvalues = statsGen.values()
 
                             # append
                             columnValues += statsvalues
 
                             if self.verbose:
-                                print(F"stats: {channelfilter.name}-{tailfilter.name}:", dict(zip(RssiChannelFeatures.columnNames(), statsvalues)))
+                                print(F"stats: {channelfilter.name}-{tailfilter.name}:", dict(zip(statsGen.columnNames(), statsvalues)))
                     outputline = ",".join([str(val) for val in columnValues])
 
                 except ValueError as e:
@@ -108,11 +111,17 @@ class RssiNeighbourMessageAggregator:
             self.output(outputline, outFile)
 
     def output(self, outputline, outFile):
+        if self.verbose:
+            print(F"output: '{outputline}'")
+
+        allValuesAreDefined = all(outputline.split(","))
+        if not self.allowIncompleteRecords and not allValuesAreDefined:
+            print("*** stripping incomplete record ***")
+            outputline = None
+
         if outputline is not None:
             if not self.dryRun:
                 print(outputline, file=outFile)
-            if self.verbose:
-                print(F"output: {outputline}")
 
     def update(self, rssiNeighbourMessageRecord):
         """

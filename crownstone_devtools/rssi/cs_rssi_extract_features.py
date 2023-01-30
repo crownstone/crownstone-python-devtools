@@ -122,6 +122,7 @@ if __name__=="__main__":
     argparser.add_argument("-s", "--sender", type=int)
     argparser.add_argument("-r", "--receiver", type=int)
     argparser.add_argument("-v", "--verbose", default=False, action='store_true')
+    argparser.add_argument("-a", "--allowIncompleteRecords", default=False, action='store_true')
 
     pargs = argparser.parse_args()
 
