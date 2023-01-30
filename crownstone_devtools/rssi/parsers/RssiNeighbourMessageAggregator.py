@@ -114,14 +114,16 @@ class RssiNeighbourMessageAggregator:
         if self.verbose:
             print(F"output: '{outputline}'")
 
+        if outputline is None:
+            return
+
         allValuesAreDefined = all(outputline.split(","))
         if not self.allowIncompleteRecords and not allValuesAreDefined:
-            print("*** stripping incomplete record ***")
-            outputline = None
+            print("*** skipping incomplete record ***")
+            return
 
-        if outputline is not None:
-            if not self.dryRun:
-                print(outputline, file=outFile)
+        if not self.dryRun:
+            print(outputline, file=outFile)
 
     def update(self, rssiNeighbourMessageRecord):
         """

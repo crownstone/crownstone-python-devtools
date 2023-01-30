@@ -1,7 +1,7 @@
 from itertools import chain
 from datetime import timedelta
 from crownstone_devtools.rssi.RssiNeighbourMessageRecord import RssiNeighbourMessageRecord
-from statistics import mean, stdev, median_grouped, mode
+from statistics import mean, stdev, median_grouped, multimode
 
 
 class RssiChannelBasicFeatures:
@@ -49,7 +49,7 @@ class RssiChannelBasicFeatures:
         else:
             self.mean = mean(rssis)
             # `reversed` ensures priority is given to the last record in tie breaks.
-            self.label = mode(reversed([rec.labelchr for rec in records]))
+            self.label = multimode(reversed([rec.labelchr for rec in records]))[-1]
 
 
     def toRssi(self, record):
@@ -144,7 +144,7 @@ class RssiChannelExtendedFeatures:
             self.median_grouped = median_grouped(rssis)
 
             # `reversed` ensures priority is given to the last record in tie breaks.
-            self.label = mode(reversed([rec.labelchr for rec in records]))
+            self.label = multimode(reversed([rec.labelchr for rec in records]))[-1]
 
             self.min_max_gap = max(rssis)-min(rssis)
 
